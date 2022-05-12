@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv
+import cv2
 from math import sqrt, pow
 import sys
 import threading
@@ -34,7 +35,26 @@ class ImageReader(object):
     # Read an image and convert it into a drawing (an array of points)
     def read_image(self, image):
         drawing = Drawing()
-        # TODO: Implement computer vision stuff
+        
+        # Converts an image to grayscale, identifies lines, creates array of line endpoints
+        grayscale = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+
+        blurred_grayscale = cv2.GaussianBlur(grayscale,(5, 5),0)
+
+        low_threshold = 50
+        high_threshold = 150
+        edges = cv2.Canny(blurred_grayscale, low_threshold, high_threshold)
+
+        # HoughLinesP tranformation parameteres (Taken from Github so these parameters may need to be adjusted for our use)
+        theta = np.pi / 180  # angular resolution in radians of the grid
+        threshold = 15  # min # of interserctions
+        min_line_length = 50  # min # of pixels making a line
+        max_line_gap = 20  # max gap in pixels between line segments (this might need to change)
+
+
+        lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap)
+
+        print(lineArray) # This is the array of endpoints
         return drawing
 
     def run(self):

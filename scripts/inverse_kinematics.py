@@ -52,13 +52,10 @@ class RoboForger(object):
 
     # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm
     def compute_inverse_kinematics(self, x, y):
-
-        # q2 = math.acos(math.sin(math.acos((self.l1**2 + self.l2**2 - x**2 - y**2) / (2 * self.l1 * self.l2))))
-        # q1 = math.atan2(x, y) - math.atan2(self.l2 * math.cos(q2), self.l1)
-
-
-        q2 = math.acos(math.sin(math.acos((self.l1_prime**2 + self.l2**2 - x**2 - y**2) / (2 * self.l1 * self.l2))))
-        q1 = math.radians(90) - math.atan2(y, x) - math.asin(self.la / self.l1) - math.acos((x**2 + y**2 + self.l1_prime**2 - self.l2**2)/(2*self.l1_prime*math.sqrt(x**2 + y**2)))
+        
+        d_sqr = x**2 + y**2
+        q2 = math.pi - math.acos((self.l1_prime**2 + self.l2**2 - d_sqr) / (2 * self.l1_prime * self.l2)) - math.atan2(self.l1, self.la)
+        q1 = (math.pi / 2) - math.atan2(y, x) - math.acos((self.l1_prime**2 + d_sqr - self.l2**2)/(2 * self.l1_prime * math.sqrt(d_sqr))) - math.atan2(self.la, self.l1)
 
         return q1, q2
 
@@ -134,7 +131,7 @@ class RoboForger(object):
         self.y_curr = 0.15
         
         # Define a good starting position for the arm and an open/closed position for the gripper
-        q1, q2 = self.compute_inverse_kinematics(0.1, 0.15)
+        q1, q2 = self.compute_inverse_kinematics(0.1, 0.2)
         arm_joint_goal = [math.radians(90), q1, q2, -(q1 + q2)]
         gripper_joint_goal_open = [0.019, 0.019]
         gripper_joint_goal_closed = [-0.01, -0.01]
@@ -158,17 +155,17 @@ class RoboForger(object):
     # Instructs the robot to draw a square; this function can be used for testing functionality
     def draw_square(self):
 
-        self.move_marker(0.1, 0.05, 2)
+        self.move_marker(0.1, 0.02, 1)
         self.drive(5, 0.02)
-        self.move_marker(0.1, 0.15, 2)
+        self.move_marker(0.1, 0.2, 1)
         self.drive(5, -0.02)
 
     
     def run(self):
         
-        # self.reset_arm_position()
+        self.reset_arm_position()
 
-        self.y_curr = 0.15
+        self.y_curr = 0.2
         self.draw_square()
 
 

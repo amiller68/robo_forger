@@ -27,6 +27,9 @@ class RoboForger(object):
         # Lengths of two joints used for IK
         self.l1 = 0.128
         self.l2 = 0.124
+        self.la = 0.024
+
+        self.l1_prime = math.sqrt(self.l1**2 + self.la**2)
 
         # Ranges of the angles of the two joints used for IK
         self.q1_min = math.radians(-103)
@@ -50,8 +53,12 @@ class RoboForger(object):
     # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm
     def compute_inverse_kinematics(self, x, y):
 
-        q2 = math.acos(math.sin(math.acos((self.l1**2 + self.l2**2 - x**2 - y**2) / (2 * self.l1 * self.l2))))
-        q1 = math.atan2(x, y) - math.atan2(self.l2 * math.cos(q2), self.l1)
+        # q2 = math.acos(math.sin(math.acos((self.l1**2 + self.l2**2 - x**2 - y**2) / (2 * self.l1 * self.l2))))
+        # q1 = math.atan2(x, y) - math.atan2(self.l2 * math.cos(q2), self.l1)
+
+
+        q2 = math.acos(math.sin(math.acos((self.l1_prime**2 + self.l2**2 - x**2 - y**2) / (2 * self.l1 * self.l2))))
+        q1 = math.radians(90) - math.atan2(y, x) - math.asin(self.la / self.l1) - math.acos((x**2 + y**2 + self.l1_prime**2 - self.l2**2)/(2*self.l1_prime*math.sqrt(x**2 + y**2)))
 
         return q1, q2
 
@@ -88,39 +95,54 @@ class RoboForger(object):
 
 
     # Moves the marker to the specified (x, y) position
-    def move_marker(self, x, y):
+    def move_marker(self, x, y, num_waypoints):
 
-        # Attempt to use IK to compute joint positions
-        try:
-            q1, q2 = self.compute_inverse_kinematics(x, y)
-        
-        # If the position cannot be reached, return
-        except ValueError:
-            print(f"Inverse kinematics computation shows that this (x, y) position cannot be reached by the OpenMANIPULATOR arm.")
-            return
+        for i in range(num_waypoints):
 
-        # If IK computation gives angles outside of the arm's range, return
-        if q1 < self.q1_min or q1 > self.q1_max or q2 < self.q2_min or q2 > self.q2_max:
-            print(f"Inverse kinematics computed angles {q1} and {q2}, which are outside the range of the OpenMANIPULATOR joints.")
-            return
-        
-        # Set yaw to 90 degrees, and set the angles of the next two revolute joints based on IK computation.
-        #   The end effector joint should be set to -(q1 + q2) to offset the other joint angles and keep it
-        #   perpendicular to the wall.
-        arm_joint_goal = [math.radians(90), q1, q2, -(q1 + q2)]
+            goal_y = self.y_curr + ((i + 1) * (y - self.y_curr) / num_waypoints)
+            
+            # Attempt to use IK to compute joint positions
+            try:
+                q1, q2 = self.compute_inverse_kinematics(x, goal_y)
+            
+            # If the position cannot be reached, return
+            except ValueError:
+                print(f"Inverse kinematics computation shows that this (x, y) position cannot be reached by the OpenMANIPULATOR arm.")
+                return
 
-        # Execute the move to the joint goal, providing time for it to finish
-        self.move_group_arm.go(arm_joint_goal, wait=True)
-        self.move_group_arm.stop()
-        rospy.sleep(2)
+            # If IK computation gives angles outside of the arm's range, return
+            if q1 < self.q1_min or q1 > self.q1_max or q2 < self.q2_min or q2 > self.q2_max:
+                print(f"Inverse kinematics computed angles {q1} and {q2}, which are outside the range of the OpenMANIPULATOR joints.")
+                return
+            
+            # Set yaw to 90 degrees, and set the angles of the next two revolute joints based on IK computation.
+            #   The end effector joint should be set to -(q1 + q2) to offset the other joint angles and keep it
+            #   perpendicular to the wall.
+            arm_joint_goal = [math.radians(90), q1, q2, -(q1 + q2)]
+
+            # Execute the move to the joint goal, providing time for it to finish
+            self.move_group_arm.go(arm_joint_goal, wait=True)
+            self.move_group_arm.stop()
+            rospy.sleep(3)
+
+        self.y_curr = y
 
 
     # Swings the Turtlebot3 arm around to a good starting position, and then waits before closing the gripper
     def reset_arm_position(self):
+
+        self.y_curr = 0.15
         
-        # Define a good starting position for the arm and a closed position for the gripper
-        arm_joint_goal = [math.radians(90), 0, 0, 0]
-        gripper_joint_goal = [0.019, 0.019]
+        # Define a good starting position for the arm and an open/closed position for the gripper
+        q1, q2 = self.compute_inverse_kinematics(0.1, 0.15)
+        arm_joint_goal = [math.radians(90), q1, q2, -(q1 + q2)]
+        gripper_joint_goal_open = [0.019, 0.019]
+        gripper_joint_goal_closed = [-0.01, -0.01]
+
+        # Open the gripper, and give time for the robot to execute the action
+        self.move_group_gripper.go(gripper_joint_goal_open, wait=True)
+        self.move_group_gripper.stop()
+        rospy.sleep(2)
 
         # Go to the specified arm position, and then wait for 5 seconds to give time to insert the marker
         self.move_group_arm.go(arm_joint_goal, wait=True)
@@ -128,7 +150,7 @@ class RoboForger(object):
         rospy.sleep(5)
 
         # Close the gripper, and give time for the robot to execute the action
-        self.move_group_gripper.go(gripper_joint_goal, wait=True)
+        self.move_group_gripper.go(gripper_joint_goal_closed, wait=True)
         self.move_group_gripper.stop()
         rospy.sleep(2)
 
@@ -136,15 +158,17 @@ class RoboForger(object):
     # Instructs the robot to draw a square; this function can be used for testing functionality
     def draw_square(self):
 
-        self.move_marker(0.1, 0.05)
-        self.drive(3, 0.04)
-        self.move_marker(0.1, 0.1)
-        self.drive(3, -0.04)
+        self.move_marker(0.1, 0.05, 2)
+        self.drive(5, 0.02)
+        self.move_marker(0.1, 0.15, 2)
+        self.drive(5, -0.02)
 
     
     def run(self):
+        
+        # self.reset_arm_position()
 
-        self.reset_arm_position()
+        self.y_curr = 0.15
         self.draw_square()
 
 

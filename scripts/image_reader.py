@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 from sensor_msgs.msg import Image, LaserScan
+from robo_forger.msg import Point
 import rospy
 import numpy as np
 import os
@@ -34,8 +35,9 @@ class ImageReader(object):
         rospy.Subscriber('/camera/rgb/image_raw', Image, self.read_image)
 
         # This is commented out just because it hasn't been set up yet
-        
+
         # Declare a publisher for our generated drawings
+        self.point_pub = rospy.Publisher('/robo_forger/point', Point, queue_size=10)
         #self.drawing_pub = rospy.Publisher("/robo_forger/drawing", Drawing, queue_size=10)
 
     # Read an image and convert it into a drawing (an array of points)
@@ -44,7 +46,7 @@ class ImageReader(object):
         #REALTIME VISION PROCESSING
         image = self.bridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
 
-        
+
         # Converts an image to grayscale, identifies lines, creates array of line endpoints
         grayscale = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
 
@@ -69,13 +71,24 @@ class ImageReader(object):
 
         print(lineArray) # This is the array of endpoints
 
+        for line in lineArray:
+            # pt = np.array(line) * 0.2 / max(img.shape)
+            pt = line[0].astype(float) * 0.2 / max(edges.shape)
+            pt[1] = 0.2-pt[1]
+            pt[3] = 0.2-pt[3]
+            self.point_pub.publish(Point(x=pt[0]-0.1, y=pt[1], start=True))
+            self.point_pub.publish(Point(x=pt[2]-0.1, y=pt[3], start=False))
+            rospy.sleep(8)
+
         #FEED IN IMAGE PROCESSING (NOT REALTIME)
         #drawing = Drawing()
         #return drawing
-        
+
 
     def run(self):
         print("[IMAGE-READER] Reading in image...")
+        img = cv2.imread(test_image)
+        self.read_image(img)
         rospy.spin()
 
         # For now this node just reads one image, publishes the resulting drawing, and returns
@@ -89,7 +102,7 @@ class ImageReader(object):
 
 
 if __name__ == "__main__":
-    
+
     node = ImageReader()
     node.run()
 

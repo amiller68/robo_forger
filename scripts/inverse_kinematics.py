@@ -5,6 +5,7 @@ import moveit_commander # Import the moveit_commander, which allows us to contro
 import rospy
 import numpy as np
 from geometry_msgs.msg import Vector3, Twist
+from robo_forger.msg import Point
 
 # A class that describes how the robot thinks about a point in 2D space
 class Point(object):
@@ -27,6 +28,7 @@ class RoboForgerIK(object):
 
         # Set a reasonable starting position
         self.curr_pos = (0.2, 0.2, 0.0)
+        self.draw_pos = [0.0, 0.1]
 
         # Lengths of joints used for IK
         # Length of first joint
@@ -34,7 +36,7 @@ class RoboForgerIK(object):
         # Length of second joint
         self.l2 = 0.124
         # Length from the gripper joint to the marker tip
-        self.l3 = 0.200
+        self.l3 = 0.230
 
         # Ranges of the angles of the two joints used for IK
         self.q1_min = math.radians(-103)
@@ -48,6 +50,7 @@ class RoboForgerIK(object):
 
         # Set up publisher to cmd_vel topic
         self.twist_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
+        rospy.Subscriber('/robo_forger/point', Point, self.recv_point)
 
         # Initialize a default Twist message (all values 0)
         lin = Vector3()
@@ -74,9 +77,14 @@ class RoboForgerIK(object):
         # Distance from base joint to gripper wrist (squared)
         d_sqr = z**2 + y**2
 
-        # Use law of cosines to find IK angles and convert to robot arm coordinates
-        q2 = math.radians( 11) + math.radians(90) - math.acos((self.l1**2 + self.l2**2 - d_sqr) / (2 * self.l1 * self.l2))
-        q1 = math.radians(-11) + math.radians(90) - math.acos((self.l1**2 + d_sqr - self.l2**2) / (2 * self.l1 * math.sqrt(d_sqr))) - math.atan2(y, z)
+        # Use law of cosines to find IK angles
+        # print((self.l1**2 + d_sqr - self.l2**2) / (2 * self.l1 * math.sqrt(d_sqr)))
+        q1 = math.acos((self.l1**2 + d_sqr - self.l2**2) / (2 * self.l1 * math.sqrt(d_sqr)))
+        q2 = math.acos((self.l1**2 + self.l2**2 - d_sqr) / (2 * self.l1 * self.l2))
+
+        # Convert to robot arm coordinates
+        q1 = math.radians(-11) + math.radians(90) - q1 - math.atan2(y, z)
+        q2 = math.radians( 11) + math.radians(90) - q2
 
         return q0, q1, q2
 
@@ -112,7 +120,7 @@ class RoboForgerIK(object):
         self.twist_pub.publish(self.twist)
 
 
-    def move_marker_to_pose(self, a, b, c, d=None):
+    def move_marker_to_pose(self, a, b, c, d=None, delay=4):
         # Angle limits
         # -162 < a < 162
         # -102 < b <  90
@@ -128,20 +136,22 @@ class RoboForgerIK(object):
         b += math.radians(-5)
         d += math.radians(-5)
 
-        # Do the motion
-        self.move_group_arm.go([a, b, c, d], wait=True)
-        self.move_group_arm.stop()
+        try:
+            # Do the motion
+            self.move_group_arm.go([a, b, c, d], wait=True)
+            self.move_group_arm.stop()
 
-        # Waiting seems necessary irl, so pause for a short time
-        rospy.sleep(0.5)
-
+            # Waiting seems necessary irl, so pause for a short time
+            rospy.sleep(delay)
+        except moveit_commander.exception.MoveItCommanderException:
+            pass
 
     # Moves the marker to the specified (x, y, z) position
-    def move_marker(self, x, y, z, num_waypoints):
-        if num_waypoints == 1:
-            waypoints = [[x, y, z]]
-        else:
-            waypoints = np.linspace(self.curr_pos, [x, y, z], num_waypoints)
+    def move_marker(self, x, y, z, num_waypoints=1):
+        if num_waypoints < 1:
+            num_waypoints = 1
+
+        waypoints = np.linspace(self.curr_pos, [x, y, z], num_waypoints+1)[1:]
 
         for x1, y1, z1 in waypoints:
             # Attempt to use IK to compute joint positions
@@ -165,6 +175,7 @@ class RoboForgerIK(object):
     # Swings the Turtlebot3 arm around to a good starting position, and then waits before closing the gripper
     def reset_arm_position(self):
 
+        # self.move_marker(0.27, 0.1, 0.0, 1)
         self.curr_pos = (0.2, 0.2, 0.0)
 
         # Define a good starting position for the arm and an open/closed position for the gripper
@@ -203,13 +214,31 @@ class RoboForgerIK(object):
             y = math.sin(theta) * 0.045
             self.move_marker(.2, y+.1, z, num_waypoints=1)
 
+    def recv_point(self, data):
+        # print('Got point %.3f %.3f %s' % (data.x, data.y, str(data.start)))
+
+        dist = ((self.draw_pos[0]-data.x)**2 + (self.draw_pos[1]-data.y)**2)**0.5
+
+        if data.start:
+            print('Lift')
+            self.move_marker(0.27, self.draw_pos[1], self.draw_pos[0], 1)
+            print('Go to start')
+            self.move_marker(0.27, data.y, data.x, 1)
+            print('Place')
+            self.move_marker(0.30, data.y, data.x, 1)
+        else:
+            print('Draw')
+            self.move_marker(0.30, data.y, data.x, int(dist / 0.035))
+
+        self.draw_pos = [data.x, data.y]
 
     def run(self):
 
         self.reset_arm_position()
 
-        self.draw_circle()
-        self.draw_square()
+        # self.draw_circle()
+        # self.draw_square()
+        rospy.spin()
 
 
 if __name__ == "__main__":

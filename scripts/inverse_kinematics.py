@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import math
 import moveit_commander # Import the moveit_commander, which allows us to control the arms
 import rospy
@@ -17,19 +18,23 @@ class Point(object):
         self.continuous = continuous
 
 
-class RoboForger(object):
-    
+class RoboForgerIK(object):
+
     def __init__(self):
 
         # Initialize this node
-        rospy.init_node("robo_forger")
+        rospy.init_node("robo_forger_ik")
 
-        # Lengths of two joints used for IK
-        self.l1 = 0.128
+        # Set a reasonable starting position
+        self.curr_pos = (0.2, 0.2, 0.0)
+
+        # Lengths of joints used for IK
+        # Length of first joint
+        self.l1 = 0.130
+        # Length of second joint
         self.l2 = 0.124
-        self.la = 0.024
-
-        self.l1_prime = math.sqrt(self.l1**2 + self.la**2)
+        # Length from the gripper joint to the marker tip
+        self.l3 = 0.200
 
         # Ranges of the angles of the two joints used for IK
         self.q1_min = math.radians(-103)
@@ -48,16 +53,32 @@ class RoboForger(object):
         lin = Vector3()
         ang = Vector3()
         self.twist = Twist(linear=lin, angular=ang)
-        
+
 
     # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm
-    def compute_inverse_kinematics(self, x, y):
-        
-        d_sqr = x**2 + y**2
-        q2 = math.pi - math.acos((self.l1_prime**2 + self.l2**2 - d_sqr) / (2 * self.l1_prime * self.l2)) - math.atan2(self.l1, self.la)
-        q1 = (math.pi / 2) - math.atan2(y, x) - math.acos((self.l1_prime**2 + d_sqr - self.l2**2)/(2 * self.l1_prime * math.sqrt(d_sqr))) - math.atan2(self.la, self.l1)
+    def compute_inverse_kinematics(self, x, y, z):
+        # X left, Y up, Z forward
 
-        return q1, q2
+        # The gripper takes up a certain horizontal length, so handle that
+        totalDist = (z**2 + x**2)**0.5
+        targetDistIK = totalDist-self.l3
+        z *= targetDistIK/totalDist
+        x *= targetDistIK/totalDist
+
+        # Find the base angle
+        q0 = math.atan2(x, z)
+
+        # Convert z into in-plane horizontal distance for the 2 joint IK
+        z = (z**2 + x**2)**0.5
+
+        # Distance from base joint to gripper wrist (squared)
+        d_sqr = z**2 + y**2
+
+        # Use law of cosines to find IK angles and convert to robot arm coordinates
+        q2 = math.radians( 11) + math.radians(90) - math.acos((self.l1**2 + self.l2**2 - d_sqr) / (2 * self.l1 * self.l2))
+        q1 = math.radians(-11) + math.radians(90) - math.acos((self.l1**2 + d_sqr - self.l2**2) / (2 * self.l1 * math.sqrt(d_sqr))) - math.atan2(y, z)
+
+        return q0, q1, q2
 
 
     # Prints the arm positions that are computed as within the angle range of the OpenMANIPULATOR joints
@@ -68,7 +89,7 @@ class RoboForger(object):
             for y in np.arange(0, self.l1 + self.l2, 0.01):
                 try:
                     q1, q2 = self.compute_inverse_kinematics(x, y)
-                    
+
                     # Only print the (x, y) position if it falls within the angle ranges of the arm joints
                     if q1 > self.q1_min and q1 < self.q1_max and q2 > self.q2_min and q2 < self.q2_max:
                         print(x, y)
@@ -77,7 +98,7 @@ class RoboForger(object):
                 except ValueError:
                     pass
 
-    
+
     # Instructs the robot to drive for a specified amount of time, at a specified linear velocity
     def drive(self, time, vel):
 
@@ -91,17 +112,41 @@ class RoboForger(object):
         self.twist_pub.publish(self.twist)
 
 
-    # Moves the marker to the specified (x, y) position
-    def move_marker(self, x, y, num_waypoints):
+    def move_marker_to_pose(self, a, b, c, d=None):
+        # Angle limits
+        # -162 < a < 162
+        # -102 < b <  90
+        #  -54 < c <  79
+        # -102 < d < 117
 
-        for i in range(num_waypoints):
+        # The gripper angle can automatically be found
+        # (It is always horizontal)
+        if d is None:
+            d = -(b + c)
 
-            goal_y = self.y_curr + ((i + 1) * (y - self.y_curr) / num_waypoints)
-            
+        # The arm has some weight irl, so do a slight offset
+        b += math.radians(-5)
+        d += math.radians(-5)
+
+        # Do the motion
+        self.move_group_arm.go([a, b, c, d], wait=True)
+        self.move_group_arm.stop()
+
+        # Waiting seems necessary irl, so pause for a short time
+        rospy.sleep(0.5)
+
+
+    # Moves the marker to the specified (x, y, z) position
+    def move_marker(self, x, y, z, num_waypoints):
+        if num_waypoints == 1:
+            waypoints = [[x, y, z]]
+        else:
+            waypoints = np.linspace(self.curr_pos, [x, y, z], num_waypoints)
+
+        for x1, y1, z1 in waypoints:
             # Attempt to use IK to compute joint positions
             try:
-                q1, q2 = self.compute_inverse_kinematics(x, goal_y)
-            
+                q0, q1, q2 = self.compute_inverse_kinematics(x1, y1, z1)
             # If the position cannot be reached, return
             except ValueError:
                 print(f"Inverse kinematics computation shows that this (x, y) position cannot be reached by the OpenMANIPULATOR arm.")
@@ -111,28 +156,19 @@ class RoboForger(object):
             if q1 < self.q1_min or q1 > self.q1_max or q2 < self.q2_min or q2 > self.q2_max:
                 print(f"Inverse kinematics computed angles {q1} and {q2}, which are outside the range of the OpenMANIPULATOR joints.")
                 return
-            
-            # Set yaw to 90 degrees, and set the angles of the next two revolute joints based on IK computation.
-            #   The end effector joint should be set to -(q1 + q2) to offset the other joint angles and keep it
-            #   perpendicular to the wall.
-            arm_joint_goal = [math.radians(90), q1, q2, -(q1 + q2)]
 
-            # Execute the move to the joint goal, providing time for it to finish
-            self.move_group_arm.go(arm_joint_goal, wait=True)
-            self.move_group_arm.stop()
-            rospy.sleep(3)
+            self.move_marker_to_pose(q0, q1, q2)
 
-        self.y_curr = y
+        self.curr_pos = x, y, z
 
 
     # Swings the Turtlebot3 arm around to a good starting position, and then waits before closing the gripper
     def reset_arm_position(self):
 
-        self.y_curr = 0.15
-        
+        self.curr_pos = (0.2, 0.2, 0.0)
+
         # Define a good starting position for the arm and an open/closed position for the gripper
-        q1, q2 = self.compute_inverse_kinematics(0.1, 0.2)
-        arm_joint_goal = [math.radians(90), q1, q2, -(q1 + q2)]
+        q0, q1, q2 = self.compute_inverse_kinematics(0.2, 0.2, 0.0)
         gripper_joint_goal_open = [0.019, 0.019]
         gripper_joint_goal_closed = [-0.01, -0.01]
 
@@ -142,8 +178,7 @@ class RoboForger(object):
         rospy.sleep(2)
 
         # Go to the specified arm position, and then wait for 5 seconds to give time to insert the marker
-        self.move_group_arm.go(arm_joint_goal, wait=True)
-        self.move_group_arm.stop()
+        self.move_marker_to_pose(q0, q1, q2)
         rospy.sleep(5)
 
         # Close the gripper, and give time for the robot to execute the action
@@ -151,7 +186,7 @@ class RoboForger(object):
         self.move_group_gripper.stop()
         rospy.sleep(2)
 
-    
+
     # Instructs the robot to draw a square; this function can be used for testing functionality
     def draw_square(self):
 
@@ -160,15 +195,23 @@ class RoboForger(object):
         self.move_marker(0.1, 0.2, 1)
         self.drive(5, -0.02)
 
-    
+
+    # Instructs the robot to draw a circle; this function can be used for testing functionality
+    def draw_circle(self):
+        for theta in np.linspace(0, np.pi*2, 32):
+            z = math.cos(theta) * 0.05
+            y = math.sin(theta) * 0.045
+            self.move_marker(.2, y+.1, z, num_waypoints=1)
+
+
     def run(self):
-        
+
         self.reset_arm_position()
 
-        self.y_curr = 0.2
+        self.draw_circle()
         self.draw_square()
 
 
 if __name__ == "__main__":
-    node = RoboForger()
+    node = RoboForgerIK()
     node.run()

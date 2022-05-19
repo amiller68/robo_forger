@@ -28,7 +28,7 @@ class RoboForgerIK(object):
 
         # Set a reasonable starting position
         self.curr_pos = (0.2, 0.2, 0.0)
-        self.draw_pos = [0.0, 0.1]
+        self.draw_pos = [0.0, 0.2]
 
         # Lengths of joints used for IK
         # Length of first joint
@@ -181,7 +181,7 @@ class RoboForgerIK(object):
         # Define a good starting position for the arm and an open/closed position for the gripper
         q0, q1, q2 = self.compute_inverse_kinematics(0.2, 0.2, 0.0)
         gripper_joint_goal_open = [0.019, 0.019]
-        gripper_joint_goal_closed = [-0.01, -0.01]
+        gripper_joint_goal_closed = [-0.007, -0.007]
 
         # Open the gripper, and give time for the robot to execute the action
         self.move_group_gripper.go(gripper_joint_goal_open, wait=True)
@@ -215,7 +215,7 @@ class RoboForgerIK(object):
             self.move_marker(.2, y+.1, z, num_waypoints=1)
 
     def recv_point(self, data):
-        # print('Got point %.3f %.3f %s' % (data.x, data.y, str(data.start)))
+        print('Got point %.3f %.3f %s' % (data.x, data.y, str(data.start)))
 
         dist = ((self.draw_pos[0]-data.x)**2 + (self.draw_pos[1]-data.y)**2)**0.5
 

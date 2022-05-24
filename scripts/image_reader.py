@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
-import csv
+
 import cv2
 import cv_bridge
-from math import sqrt, pow
-import sys
-import threading
-import time
-from sensor_msgs.msg import Image, LaserScan
+from sensor_msgs.msg import Image
 from robo_forger.msg import Point
 import rospy
 import numpy as np
@@ -17,7 +13,7 @@ import os
 #from robo_forger.msg import Point
 
 path_prefix = os.path.dirname(__file__)
-test_image = path_prefix + "/test_images/square.jpg"
+test_image = path_prefix + '/test_images/leaf.png'
 
 
 '''
@@ -31,10 +27,8 @@ class ImageReader(object):
     def __init__(self):
         rospy.init_node("image_reader")
 
-        self.bridge = cv_bridge.CvBridge()
-        rospy.Subscriber('/camera/rgb/image_raw', Image, self.read_image)
-
-        # This is commented out just because it hasn't been set up yet
+        # self.bridge = cv_bridge.CvBridge()
+        # rospy.Subscriber('/camera/rgb/image_raw', Image, self.read_image)
 
         # Declare a publisher for our generated drawings
         self.point_pub = rospy.Publisher('/robo_forger/point', Point, queue_size=10)
@@ -42,23 +36,21 @@ class ImageReader(object):
 
     # Read an image and convert it into a drawing (an array of points)
     def read_image(self, image):
-
         #REALTIME VISION PROCESSING
-        image = self.bridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
-
+        # image = self.bridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
 
         # Converts an image to grayscale, identifies lines, creates array of line endpoints
-        grayscale = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+        grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        blurred_grayscale = cv2.GaussianBlur(grayscale,(5, 5),0)
+        blurred_grayscale = cv2.GaussianBlur(grayscale, (5, 5), 0)
 
         low_threshold = 50
         high_threshold = 150
         edges = cv2.Canny(blurred_grayscale, low_threshold, high_threshold)
 
-        cv2.imshow('image', image) #Original image
-        cv2.imshow('edges', edges) #Edges image
-        cv2.waitKey(1)
+        # cv2.imshow('image', image) #Original image
+        # cv2.imshow('edges', edges) #Edges image
+        # cv2.waitKey(1)
 
         # HoughLinesP tranformation parameteres (Taken from Github so these parameters may need to be adjusted for our use)
         theta = np.pi / 180  # angular resolution in radians of the grid
@@ -66,24 +58,36 @@ class ImageReader(object):
         min_line_length = 50  # min # of pixels making a line
         max_line_gap = 20  # max gap in pixels between line segments (this might need to change)
 
-
         lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap)
 
-        print(lineArray) # This is the array of endpoints
 
-        for line in lineArray:
-            # pt = np.array(line) * 0.2 / max(img.shape)
-            pt = line[0].astype(float) * 0.2 / max(edges.shape)
-            pt[1] = 0.2-pt[1]
-            pt[3] = 0.2-pt[3]
-            self.point_pub.publish(Point(x=pt[0]-0.1, y=pt[1], start=True))
-            self.point_pub.publish(Point(x=pt[2]-0.1, y=pt[3], start=False))
-            rospy.sleep(8)
+        # TEMP LOGIC TO DRAW A SQUARE
+        lines = [
+            [[           0,            0,            0, edges.shape[1]]],
+            [[           0, edges.shape[1], edges.shape[0], edges.shape[1]]],
+            [[edges.shape[0], edges.shape[1], edges.shape[0],            0]],
+            [[edges.shape[0],            0,            0,            0]],
+        ]
+        lines = lines*10
+
+
+        lines = np.array(lines)
+        lines = np.squeeze(lines, axis=1)
+        lines = lines.astype(float) / max(edges.shape)
+        # Flip y axis
+        lines[:, [1,3]] = 1 - lines[:, [1,3]]
+        # Transform x values from [0, 1] to [-0.5, 0.5]
+        lines[:, [0,2]] = lines[:, [0,2]] - 0.5
+
+        for line in lines:
+            x1, y1, x2, y2 = line
+            self.point_pub.publish(Point(x=x1, y=y1, start=True))
+            self.point_pub.publish(Point(x=x2, y=y2, start=False))
+            rospy.sleep(1)
 
         #FEED IN IMAGE PROCESSING (NOT REALTIME)
         #drawing = Drawing()
         #return drawing
-
 
     def run(self):
         print("[IMAGE-READER] Reading in image...")
@@ -98,11 +102,6 @@ class ImageReader(object):
             #self.drawing_pub.publish(drawing)
         print("[IMAGE-READER] Run exiting.")"""
 
-
-
-
 if __name__ == "__main__":
-
     node = ImageReader()
     node.run()
-

@@ -24,15 +24,16 @@ Describe how to run your code, e.g., step-by-step instructions on what commands 
 
 ### Challenges, Future Work, & Takeaways
 These should take a similar form and structure to how you approached these in the previous projects (1 paragraph each for the challenges and future work and a few bullet points for takeaways).
+
 **Challenges:**
 - Keeping the robot manipulator arm aligned properly with the wall over the course of drawing an entire image proved to be particuarly complex. Keeping the tip of the writing implement the proper distance from the wall (not too close that it cannot move smoothly, and not too far that it does not draw a line) as the angle of the manipulator arm changed was made difficult given: the change in angle of the tip of the writing implement and the effect that the weight of the arm itself had on its own movement. 
 - 
 
 **Future Work:**
-- 
+- (Insert Future Work)
 
 **Takeaways:**
-- 
+- The weight of the manipulator arm itself can affect the accuracy and movement of the joints within the arm.
 
 ## Running:
 

@@ -10,13 +10,15 @@ from robo_forger.msg import Point
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 
-IRL = False
+IRL = True
+REGRIP = False
 
-EXTRA_DELAY = 4 if IRL else 0
-WEIGHT_ANGLE = 5 if IRL else 0
+EXTRA_DELAY = 3 if IRL else 0
+WEIGHT_ANGLE = 10 if IRL else 0
 
 PUSH_OFFSET =  0.002
 LIFT_OFFSET = -0.030
+TOP_OFFSET = 0.005
 
 class RoboForgerIK(object):
     def __init__(self):
@@ -159,19 +161,20 @@ class RoboForgerIK(object):
 
         # Define starting positions for the open/closed gripper positions
         gripper_joint_goal_open = [0.019, 0.019]
-        gripper_joint_goal_closed = [-0.007, -0.007]
+        gripper_joint_goal_closed = [-0.005, -0.005]
 
-        # Open the gripper, and give time for the robot to execute the action
-        print('Opening grip')
-        self.move_group_gripper.go(gripper_joint_goal_open, wait=True)
-        self.move_group_gripper.stop()
-        rospy.sleep(EXTRA_DELAY)
+        if REGRIP:
+            # Open the gripper, and give time for the robot to execute the action
+            print('Opening grip')
+            self.move_group_gripper.go(gripper_joint_goal_open, wait=True)
+            self.move_group_gripper.stop()
+            rospy.sleep(EXTRA_DELAY)
 
-        # Close the gripper, and give time for the robot to execute the action
-        print('Closing grip')
-        self.move_group_gripper.go(gripper_joint_goal_closed, wait=True)
-        self.move_group_gripper.stop()
-        rospy.sleep(EXTRA_DELAY)
+            # Close the gripper, and give time for the robot to execute the action
+            print('Closing grip')
+            self.move_group_gripper.go(gripper_joint_goal_closed, wait=True)
+            self.move_group_gripper.stop()
+            rospy.sleep(EXTRA_DELAY)
 
         print('Ready!')
 
@@ -181,10 +184,18 @@ class RoboForgerIK(object):
         pt = np.array([data.x, data.y])
         dist = np.linalg.norm(self.draw_pos - pt)
 
-        if dist <= 0.01:
+        print()
+        print()
+        print(pt)
+
+        if False:#dist <= 0.001:
             print('Close enough, ignoring move')
             self.draw_pos = pt
             return
+
+        TOP_OFFSET = 0.027
+        lift_dist = self.board_dist + LIFT_OFFSET
+        draw_dist = self.board_dist + PUSH_OFFSET + TOP_OFFSET*(1-pt[1])
 
         # Convert to robot-centric coordinates
         pt *= 0.2
@@ -192,19 +203,20 @@ class RoboForgerIK(object):
 
         if data.start:
             print('Lifting')
-            self.move_marker(self.board_dist + LIFT_OFFSET, self.draw_pos[1], self.draw_pos[0], 1)
+            self.move_marker(lift_dist, self.draw_pos[1], self.draw_pos[0], 1)
             print('Going to start')
-            self.move_marker(self.board_dist + LIFT_OFFSET, pt[1], pt[0], int(dist * 4))
+            self.move_marker(lift_dist, pt[1], pt[0], int(dist * 4))
             print('Placing')
-            self.move_marker(self.board_dist + PUSH_OFFSET, pt[1], pt[0], 1)
+            self.move_marker(draw_dist, pt[1], pt[0], 1)
         else:
             print('Drawing')
-            self.move_marker(self.board_dist + PUSH_OFFSET, pt[1], pt[0], int(dist * 8))
+            self.move_marker(draw_dist, pt[1], pt[0], int(dist * 8))
 
         # Convert out of robot-centric coordinates
         self.draw_pos = pt*5
 
     def process_scan(self, data):
+        return
         # Get the lidar distances
         d = data.ranges
         # Filter out bogus 0's
@@ -217,6 +229,7 @@ class RoboForgerIK(object):
 
         # Find the closest distance
         d = min(d)
+        print('d', d)
 
         # Weighted average with previous distance
         weight = 0.1

@@ -62,24 +62,24 @@ class ImageReader(object):
 
 
         # TEMP LOGIC TO DRAW A SQUARE
-        lines = [
-            [[           0,            0,            0, edges.shape[1]]],
-            [[           0, edges.shape[1], edges.shape[0], edges.shape[1]]],
-            [[edges.shape[0], edges.shape[1], edges.shape[0],            0]],
-            [[edges.shape[0],            0,            0,            0]],
-        ]
-        lines = lines*10
+        if False:
+            lineArray = [
+                [[           0,            0,            0, edges.shape[1]]],
+                [[           0, edges.shape[1], edges.shape[0], edges.shape[1]]],
+                [[edges.shape[0], edges.shape[1], edges.shape[0],            0]],
+                [[edges.shape[0],            0,            0,            0]],
+            ]
+            lineArray = lineArray*10
 
-
-        lines = np.array(lines)
-        lines = np.squeeze(lines, axis=1)
-        lines = lines.astype(float) / max(edges.shape)
+        lineArray = np.array(lineArray)
+        lineArray = np.squeeze(lineArray, axis=1)
+        lineArray = lineArray.astype(float) / max(edges.shape)
         # Flip y axis
-        lines[:, [1,3]] = 1 - lines[:, [1,3]]
+        lineArray[:, [1,3]] = 1 - lineArray[:, [1,3]]
         # Transform x values from [0, 1] to [-0.5, 0.5]
-        lines[:, [0,2]] = lines[:, [0,2]] - 0.5
+        lineArray[:, [0,2]] = lineArray[:, [0,2]] - 0.5
 
-        for line in lines:
+        for line in lineArray:
             x1, y1, x2, y2 = line
             self.point_pub.publish(Point(x=x1, y=y1, start=True))
             self.point_pub.publish(Point(x=x2, y=y2, start=False))

@@ -5,6 +5,8 @@
 ### Project Description
 *Describe the goal of your project, why it's interesting, what you were able to make your robot do, and what the main components of your project are and how they fit together - please include diagrams and gifs when appropriate.*
 
+![Maple Leaf Gif](https://github.com/amiller68/robo_forger/blob/520d4eb5c19f63b976a737f161a9c06c8939f991/ezgif-4-180f11597a.gif)
+
 **Goal:** This project aims to have the turtlebot take an image fed to it (either from a file or live camera feed), use computer vision to identify line segments within the image, and have the turtlebot use its robot manipulator arm to draw this image on a wall. This goal requires the incorporation of multiple sensors, tools, and algorithms: live camera feed, LiDAR scanner, robot manipulator arm, computer vision (using OpenCV), and a custom built inverse kinematics algortihm. 
 
 **Successes:**

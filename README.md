@@ -22,6 +22,16 @@
 
 ### Execution
 *Describe how to run your code, e.g., step-by-step instructions on what commands to run in each terminal window to execute your project code.*
+1. Turn on the turtlebot3 
+2. Run "roscore" on your machine
+3. SSH into the turtlebot3 
+4. Run "set_ip (insert last 3 digits of your ip)"
+5. Run "bringup"
+6. SSH into the turtlebot3 in another terminal
+7. Run "set_ip (insert last 3 digits of your ip)"
+8. Run "bringup_cam"
+9. On your machine, run "roslaunch turtlebot3_manipulation_bringup turtlebot3_manipulation_bringup.launch"
+10. 
 
 ### Challenges, Future Work, & Takeaways
 *These should take a similar form and structure to how you approached these in the previous projects (1 paragraph each for the challenges and future work and a few bullet points for takeaways).*

@@ -18,6 +18,9 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 
+# Import our module for inverse kinematics
+from inverse_kinematics import *
+
 # How far our robot should be from the wall
 GOAL_WALL_DISTANCE = .1  # m
 
@@ -84,6 +87,9 @@ class RoboForger(object):
         self.scan_front_bumper = None  # A scan range for our front bumper (for keeping the robot aligned)
         self.scan_rear_bumper = None  # A scan range for our rear bumper (for keeping the robot aligned)
 
+        # Declare our inverse kinematics module
+        self.inverse_kinematics = RoboForgerIK()
+
         # Declare our ROS objects
 
         # Rospy Params
@@ -91,7 +97,7 @@ class RoboForger(object):
         self.rate_limit = rospy.Rate(10)  # How often we publish messages (10 Hz), utilize with self.rate_limit.sleep()
 
         # A Drawing subscriber to accept drawings from our image reader node
-        rospy.Subscriber("/robo_forger/drawing", Drawing, self.drawing_callback)
+        rospy.Subscriber("/robo_forger/point", Drawing, self.point_callback())
 
         # Odometry subscriber
         rospy.Subscriber('/odom', Odometry, self.set_odom_pose)
@@ -132,27 +138,17 @@ class RoboForger(object):
 
     def set_odom_pose(self, msg):
         # Extract the pose from the odometry message
-        # Defintion: http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html
         position = msg.pose.pose.position
         self.odom_pose = (position.x, position.y)
 
-    def drawing_callback(self, drawing):
-        print("[ROBO-FORGER] Received new drawing")
+    def point_callback(self, point):
+        print("[ROBO-FORGER] Received new point")
         if not self.initialized() or not self.aligned:
             print("[ROBO-FORGER] Not initialized! Refusing drawing.")
             return
 
-        # For now initialize a default drawing!
-        drawing = Drawing()
-        drawing.points = [
-            Point(x=0, y=0, continuous=True),
-            Point(x=0, y=5, continuous=True),
-            Point(x=5, y=5, continuous=True),
-            Point(x=5, y=0, continuous=True)
-        ]
-        drawing.height = 6
-        drawing.width = 6
-        self.draw(drawing)
+        # Draw the next point using inverse kinematics
+        self.inverse_kinematics.draw_next_point(point)
 
     # Align our robot with the wall and its arm with our origin
     # Assumes the robot is at least kinda facing a wall
@@ -193,7 +189,26 @@ class RoboForger(object):
         # TODO: Put the arm in its starting position based on `self.scan_left_dist`
 
         # Signal that we're aligned ready to start drawing
-        self.aligned = False
+        self.aligned = True
+
+    def run(self):
+        # Wait for the controller to be initialized
+        print("[ROBO-FORGER] Waiting for controller to be initialized")
+        while not self.initialized():
+            print("...")
+            time.sleep(1)
+
+        # Align the robot
+        print("[ROBO-FORGER] Aligning robot with nearest wall in sight...")
+        self.align()
+
+        # Start running the robot
+        print("[ROBO-FORGER] Ready to forge!")
+        rospy.spin()
+
+    '''
+    Deprecated functions
+    '''
 
     # Recognize image and load it into our points array
     def draw(self, drawing):
@@ -254,21 +269,6 @@ class RoboForger(object):
         ret = sqrt(pow(ARM_LENGTH, 2) - pow(self.scan_left_dist, 2))
         print("[ROBO-FORGER] Robot can draw ", ret, " m high")
         return ret
-
-    def run(self):
-        # Wait for the controller to be initialized
-        print("[ROBO-FORGER] Waiting for controller to be initialized")
-        while not self.initialized():
-            print("...")
-            time.sleep(1)
-
-        # Align the robot
-        print("[ROBO-FORGER] Aligning robot with nearest wall in sight...")
-        self.align()
-
-        # Start running the robot
-        print("[ROBO-FORGER] Ready to forge!")
-        rospy.spin()
 
 
 if __name__ == "__main__":

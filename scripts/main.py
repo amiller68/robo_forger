@@ -10,7 +10,7 @@ import numpy as np
 import os
 
 # Our custom messages
-from robo_forger.msg import Drawing
+# from robo_forger.msg import Drawing
 from robo_forger.msg import Point
 
 # Import our geometry and sensor messages
@@ -22,7 +22,7 @@ from sensor_msgs.msg import LaserScan
 from inverse_kinematics import *
 
 # How far our robot should be from the wall
-GOAL_WALL_DISTANCE = .3  # m
+GOAL_WALL_DISTANCE = .35  # m
 
 # TODO: Find measurement
 # How long our robot's arm is
@@ -71,8 +71,8 @@ class RoboForger(object):
         self.class_initialized = False
 
         # Class state variables
-        self.linear_speed = .25  # m/s
-        self.angular_speed = -.5  # rad/s
+        self.linear_speed = .2  # m/s
+        self.angular_speed = -.4  # rad/s
         self.goal_wall_distance = GOAL_WALL_DISTANCE  # m
         self.aligned = False  # Whether we're ready to start drawing
 
@@ -97,7 +97,7 @@ class RoboForger(object):
         self.rate_limit = rospy.Rate(10)  # How often we publish messages (10 Hz), utilize with self.rate_limit.sleep()
 
         # A Drawing subscriber to accept drawings from our image reader node
-        rospy.Subscriber("/robo_forger/point", Drawing, self.point_callback)
+        rospy.Subscriber('/robo_forger/point', Point, self.point_callback)
 
         # Odometry subscriber
         rospy.Subscriber('/odom', Odometry, self.set_odom_pose)
@@ -122,6 +122,7 @@ class RoboForger(object):
         ranges = list(map(lambda x: x if (x > 0 and x != inf) else msg.range_max, msg.ranges))
         self.scan_max_range = msg.range_max
         self.scan_ranges = ranges
+
 
         # Get the distance right in front of us
         self.scan_front_dist = ranges[0]
@@ -160,7 +161,6 @@ class RoboForger(object):
         # While We're not close to a wall to draw on
         while self.goal_wall_distance < self.scan_front_dist:
             # Move our robot to the wall
-            print("[ROBO-FORGER] ", self.scan_front_dist, " m away")
             movement.linear.x = (
                 (self.scan_front_dist - self.goal_wall_distance) / (self.scan_max_range - self.goal_wall_distance)
             ) * self.linear_speed
@@ -168,7 +168,8 @@ class RoboForger(object):
             self.move.publish(movement)
 
         # Stop the robot with an empty twist command
-        self.move.publish(Twist())
+        movement = Twist()
+        self.move.publish(movement)
 
         print("[ROBO-FORGER] Aligning with the wall...")
 
@@ -180,16 +181,16 @@ class RoboForger(object):
         # While our bumpers differ by some error
         while alignment_err < abs(self.scan_front_bumper - self.scan_rear_bumper):
             # print("[ROBO-FORGER] ", abs(self.scan_front_bumper - self.scan_rear_bumper), " m difference between bumper readings")
-            movement.angular.z = (self.scan_front_bumper - self.scan_rear_bumper) / self.scan_max_range * self.angular_speed
+            movement.angular.z = abs(self.scan_front_bumper - self.scan_rear_bumper) / self.scan_max_range * self.angular_speed
 
             self.move.publish(movement)
 
-        print("[ROBO-FORGER] Robot is aligned with the wall. Aligning arm...")
-
-        # TODO: Put the arm in its starting position based on `self.scan_left_dist`
-
         # Stop the robot with an empty twist command
-        self.move.publish(Twist())
+        movement = Twist()
+        self.move.publish(movement)
+
+        print("[ROBO-FORGER] Robot is aligned with the wall. Aligning arm...")
+        self.inverse_kinematics.reset_arm_position()
 
         # Signal that we're aligned ready to start drawing
         self.aligned = True

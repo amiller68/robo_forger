@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="b4f57719-0f8c-4742-a156-414940d3626c" name="Changes" comment="Integrated work on inverse kinematics into our RoboForger object">
+    <list default="true" id="b4f57719-0f8c-4742-a156-414940d3626c" name="Changes" comment="Got the script to run, haven't figured if the kinematics works">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/inverse_kinematics.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/inverse_kinematics.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/image_reader.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/image_reader.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -113,7 +113,14 @@
       <option name="project" value="LOCAL" />
       <updated>1653502784173</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Got the script to run, haven't figured if the kinematics works">
+      <created>1653509162958</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1653509162958</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -135,6 +142,7 @@
     <MESSAGE value="Refactored Test images" />
     <MESSAGE value="Draft of aligning the robot and moving with odometry along the wall" />
     <MESSAGE value="Integrated work on inverse kinematics into our RoboForger object" />
-    <option name="LAST_COMMIT_MESSAGE" value="Integrated work on inverse kinematics into our RoboForger object" />
+    <MESSAGE value="Got the script to run, haven't figured if the kinematics works" />
+    <option name="LAST_COMMIT_MESSAGE" value="Got the script to run, haven't figured if the kinematics works" />
   </component>
 </project>

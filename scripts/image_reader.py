@@ -4,6 +4,7 @@ import cv2
 import cv_bridge
 from sensor_msgs.msg import Image
 from robo_forger.msg import Point
+import time
 import rospy
 import numpy as np
 import os
@@ -32,6 +33,8 @@ class ImageReader(object):
 
         # Declare a publisher for our generated drawings
         self.point_pub = rospy.Publisher('/robo_forger/point', Point, queue_size=10)
+
+        time.sleep(5)
         #self.drawing_pub = rospy.Publisher("/robo_forger/drawing", Drawing, queue_size=10)
 
     # Read an image and convert it into a drawing (an array of points)
@@ -64,6 +67,7 @@ class ImageReader(object):
         for line in lineArray:
             x1, y1, x2, y2 = line[0]
             cv2.line(edges, (x1, y1), (x2, y2), (255, 0, 0), 3)
+
 
         # Show result
         edges = cv2.resize(edges, dsize=(600, 600))
@@ -126,7 +130,7 @@ class ImageReader(object):
         print("[IMAGE-READER] Reading in image...")
         img = cv2.imread(test_image)
         self.read_image(img)
-        rospy.spin()
+        # rospy.spin()
 
         # For now this node just reads one image, publishes the resulting drawing, and returns
         """with open(test_image, "r") as image:

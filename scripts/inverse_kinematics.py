@@ -10,19 +10,31 @@ from robo_forger.msg import Point
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 
+# Setup parameters:
+#   IRL: Should be set to True to add a movement delay and gripper weight compensation when running
+#     on the physical Turtlebots
+#   REGRIP: Should be set to True for the robot to open and close its gripper before running, in order
+#     to regrip the writing utensil
 IRL = True
 REGRIP = False
 
-EXTRA_DELAY = 3 if IRL else 0
+# Set up extra delay and arm weight compensation for physical Turtlebot
+EXTRA_DELAY = 5 if IRL else 0
 WEIGHT_ANGLE = 10 if IRL else 0
 
+# Offset parameters:
+#   PUSH_OFFSET: Defines much the robot should push the marker into the wall
+#   LIFT_OFFSET: Defines 
+#   TOP_OFFSET: Defines 
 PUSH_OFFSET =  0.002
 LIFT_OFFSET = -0.030
 TOP_OFFSET = 0.027
 
 class RoboForgerIK(object):
+
     def __init__(self):
-        # Initialize this node
+
+        # Initialize the inverse kinematics node
         rospy.init_node('robo_forger_ik')
 
         # Set a reasonable starting position
@@ -30,14 +42,10 @@ class RoboForgerIK(object):
         self.draw_pos = np.array([0.0, 1.0])
         self.board_dist = 0.3
 
-        # Lengths of joints used for IK
-        # Length of first joint
+        # Lengths of OpenMANIPULATOR arm joints
         self.l1 = 0.1302
-        # Length of second joint
         self.l2 = 0.124
-        # Length from the gripper joint to the marker tip
-        # self.l3 = 0.1466 # gripper front
-        self.l3 = 0.214 # pen
+        self.l3 = 0.214 # from gripper joint to marker tip
 
         # The interfaces to the group of joints making up the Turtlebot3 OpenMANIPULATOR arm and gripper
         self.move_group_arm = moveit_commander.MoveGroupCommander('arm')
@@ -51,9 +59,9 @@ class RoboForgerIK(object):
         # Initialize a default Twist message (all values 0)
         self.twist = Twist()
 
-    # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm
+    # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm. The X parameter defines
+    # distances to the left, Y defines distances up, and Z defines distances forward.
     def compute_inverse_kinematics(self, x, y, z):
-        # X left, Y up, Z forward
 
         # The gripper takes up a certain horizontal length, so handle that
         totalDist = (z**2 + x**2)**0.5
@@ -64,25 +72,28 @@ class RoboForgerIK(object):
         # Find the base angle
         q0 = math.atan2(x, z)
 
-        # Convert z into in-plane horizontal distance for the 2 joint IK
+        # Convert z into in-plane horizontal distance for the two-joint IK
         z = (z**2 + x**2)**0.5
 
-        # Distance from base joint to gripper wrist (squared)
+        # Squared distance from base joint to gripper wrist
         d_sqr = z**2 + y**2
 
         # Use law of cosines to find IK angles
-        # print((self.l1**2 + d_sqr - self.l2**2) / (2 * self.l1 * math.sqrt(d_sqr)))
         q1 = math.acos((self.l1**2 + d_sqr - self.l2**2) / (2 * self.l1 * math.sqrt(d_sqr)))
         q2 = math.acos((self.l1**2 + self.l2**2 - d_sqr) / (2 * self.l1 * self.l2))
 
-        # Convert to robot arm coordinates
+        # Convert to robot arm coordinates. The -10.64 degree angle accounts for the rigid segment of
+        #   the arm perpendicular to the length l1.
         q1 = math.radians(-10.64) + math.radians(90) - q1 - math.atan2(y, z)
         q2 = math.radians( 10.64) + math.radians(90) - q2
 
         return q0, q1, q2
 
-    # Instructs the robot to drive for a specified amount of time, at a specified linear velocity
+
+    # Instructs the robot to drive for a specified amount of time, at a specified linear velocity. Can be
+    #   used as a utility function for navigating the robot along the board.
     def drive(self, time, vel):
+
         # Set velocity, publish twist message, and give robot time to move
         self.twist.linear.x = vel
         self.twist_pub.publish(self.twist)
@@ -92,41 +103,44 @@ class RoboForgerIK(object):
         self.twist.linear.x = 0
         self.twist_pub.publish(self.twist)
 
-    def move_marker_to_pose(self, a, b, c, d=None, delay=0):
-        # Angle limits
-        # -162 < a < 162
-        # -102 < b <  90
-        #  -54 < c <  79
-        # -102 < d < 117
 
-        # The gripper angle can automatically be found
-        # (It is always horizontal)
+    # Helper function that moves the marker attached to the robot's end effector based on joint position parameters
+    def move_marker_to_pose(self, a, b, c, d=None, delay=0):
+        
+        # Angle limits for Turtlebot3
+        #   -162 < a < 162
+        #   -102 < b <  90
+        #    -54 < c <  79
+        #   -102 < d < 117
+
+        # Compute the gripper position perpendicular to the wall, accounting for the weight of the arm
         if d is None:
             d = -(b + c)
-
-        # The arm has some weight irl, so do a slight offset
-        # b += math.radians(-WEIGHT_ANGLE)
-        # c += math.radians(-WEIGHT_ANGLE)
         d += math.radians(-WEIGHT_ANGLE)
 
         try:
-            # Do the motion
+
+            # Execute the motion
             s = time.time()
             self.move_group_arm.go([a, b, c, d], wait=True)
             self.move_group_arm.stop()
             e = time.time()
 
-            time_taken = e-s
+            time_taken = e - s
 
-            # Waiting seems necessary irl, so pause for a short time
+            # Pause for a short time
             sleep_time = delay + EXTRA_DELAY - time_taken
-            sleep_time = max(sleep_time, 0) # Make sure not negative!
+            sleep_time = max(sleep_time, 0) # Make sure time is positive
             rospy.sleep(sleep_time)
+            
         except moveit_commander.exception.MoveItCommanderException:
             pass
 
-    # Moves the marker to the specified (x, y, z) position
+
+    # Moves the marker attached to the robot's end effector based on an (x, y, z) position,
+    #   with a specified number of waypoints
     def move_marker(self, x, y, z, num_waypoints=1):
+        
         if num_waypoints < 1:
             num_waypoints = 1
 

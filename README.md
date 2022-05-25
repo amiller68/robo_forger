@@ -5,18 +5,22 @@
 ### Project Description
 *Describe the goal of your project, why it's interesting, what you were able to make your robot do, and what the main components of your project are and how they fit together - please include diagrams and gifs when appropriate.*
 
-![Maple Leaf Gif](https://github.com/amiller68/robo_forger/blob/520d4eb5c19f63b976a737f161a9c06c8939f991/ezgif-4-180f11597a.gif)
 
 **Goal:** This project aims to have the turtlebot take an image fed to it (either from a file or live camera feed), use computer vision to identify line segments within the image, and have the turtlebot use its robot manipulator arm to draw this image on a wall. This goal requires the incorporation of multiple sensors, tools, and algorithms: live camera feed, LiDAR scanner, robot manipulator arm, computer vision (using OpenCV), and a custom built inverse kinematics algortihm. 
 
 **Successes:**
 
+Computer Vision: The turtlebot is successfully able to take an image, identify line segments within that image, and then convert those segments into points that can be sent to the robot.
+Inverse Kinematics: The turtlebot is able to receive a set of points (taken from the computer vision algorithm) and use its manipulator arm to draw those line segments on a vertical surface next to it. The robot is also able to use its LiDAR scanner to understand its distance from the wall and adjust the angles of its motors to align properly with the wall. 
+
+The computer vision algorithm is fed the orange maple leaf on the left. The turtlebot then outputs the drawing as shown below. 
+<img src="https://github.com/amiller68/robo_forger/blob/31b45fd845ce5a1ae888667ac7faeb9bea0d9af1/scripts/test_images/leaf.png" alt="Maple Leaf Image" width="300"/><img src="https://github.com/amiller68/robo_forger/blob/520d4eb5c19f63b976a737f161a9c06c8939f991/ezgif-4-180f11597a.gif" alt="Maple Leaf Gif" width="520"/>
 
 **Main Components:**
 - Drawing Implement Attachment: This implement attachment consists of a 3D-printed holder, spring loaded pen holder, and a thin-tipped pen. The 3D-printed holder is designed to allow for the robot manipualtor arm grip to properly grab the pen. The spring loaded pen holder is inserted into the 3D-printed holder and allows for the pen to have a bit "give" when drawing on the wall. This increases the liklihood of the pen making contact with the drawing surface for the entirety of the drawing. 
 - Computer Vision: 
 - LiDAR: The LiDAR sensor is used to measure the distance between the robot and the wall - this is then incorporated into the kinematics algorithm in order to determine the distance to which the arm should extend the pen.
-- Inverse Kinematics Algorithm:
+- Inverse Kinematics Algorithm: 
 
 
 ### System Architecture

@@ -4,7 +4,6 @@ import cv2
 import cv_bridge
 from sensor_msgs.msg import Image
 from robo_forger.msg import Point
-import time
 import rospy
 import numpy as np
 import os
@@ -19,7 +18,6 @@ test_image = path_prefix + '/test_images/leaf.png'
 
 '''
 This class implements our computer vision component of our project
-
 It reads in an image and converts it to an array of points, before publishing it to our RoboForger
 '''
 
@@ -33,8 +31,6 @@ class ImageReader(object):
 
         # Declare a publisher for our generated drawings
         self.point_pub = rospy.Publisher('/robo_forger/point', Point, queue_size=10)
-
-        time.sleep(5)
         #self.drawing_pub = rospy.Publisher("/robo_forger/drawing", Drawing, queue_size=10)
 
     # Read an image and convert it into a drawing (an array of points)
@@ -59,24 +55,16 @@ class ImageReader(object):
 
         # 30, 15, 50 is the best for maple leaf!
 
-        # HoughLinesP tranformation parameteres (Taken from Github so these parameters may need to be adjusted for our use)
+        # HoughLinesP tranformation parameters (Taken from Github so these parameters may need to be adjusted for our use)
         theta = np.pi / 180  # angular resolution in radians of the grid
         threshold = 30  # min # of interserctions
         min_line_length = 15  # min # of pixels making a line
         max_line_gap = 50  # max gap in pixels between line segments (this might need to change)
 
+        # HoughLines turns pixel-based edges into line segments defined by start and end points
         lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap) 
-        for line in lineArray:
-            x1, y1, x2, y2 = line[0]
-            cv2.line(edges, (x1, y1), (x2, y2), (255, 0, 0), 3)
 
-
-        # Show result
-        edges = cv2.resize(edges, dsize=(600, 600))
-        cv2.imshow("Result Image", edges) 
-        cv2.waitKey(0)      
-
-        # TEMP LOGIC TO DRAW A SQUARE
+        # Test points for drawing a square
         if False:
             lineArray = [
                 [[           0,            0,            0, edges.shape[1]]],
@@ -86,6 +74,24 @@ class ImageReader(object):
             ]
             lineArray = lineArray*10
 
+        # Test points for a startup calibration routine
+        if False:
+            lineArray = [
+                [[ 0, 0, 0, 0]],
+                [[ 0, 0.5, 0, 0.5]],
+                [[ 0, 1, 0, 1]],
+                [[ 0.5, 1, 0.5, 1]],
+                [[ 1, 1, 1, 1]],
+                [[ 1, 0.5, 1, 0.5]],
+                [[ 1, 0, 1, 0]],
+                [[ 0.5, 0, 0.5, 0]],
+            ]
+            lineArray = lineArray*10
+            lineArray = np.array(lineArray)
+            lineArray = np.squeeze(lineArray, axis=1)
+            lineArray = lineArray.astype(float)
+
+        # Convert the lines from image coordinates to robot/drawing coordinates
         lineArray = np.array(lineArray)
         lineArray = np.squeeze(lineArray, axis=1)
         lineArray = lineArray.astype(float) / max(edges.shape)
@@ -132,7 +138,7 @@ class ImageReader(object):
         print("[IMAGE-READER] Reading in image...")
         img = cv2.imread(test_image)
         self.read_image(img)
-        # rospy.spin()
+        rospy.spin()
 
         # For now this node just reads one image, publishes the resulting drawing, and returns
         """with open(test_image, "r") as image:

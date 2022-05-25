@@ -34,10 +34,9 @@ TOP_OFFSET = 0.027
 class RoboForgerIK(object):
 
     def __init__(self):
-        # Initialize this node
-        # rospy.init_node('robo_forger_ik')
-        self.arm_ready = False
 
+        # Initialize the inverse kinematics node
+        rospy.init_node('robo_forger_ik')
 
         # Set a reasonable starting position
         self.curr_pos = (0.2, 0.2, 0.0)
@@ -53,8 +52,12 @@ class RoboForgerIK(object):
         self.move_group_arm = moveit_commander.MoveGroupCommander('arm')
         self.move_group_gripper = moveit_commander.MoveGroupCommander('gripper')
 
-        rospy.Subscriber('/scan', LaserScan, self.process_scan)
+        # Set up publishers and subscribers
+        self.twist_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        rospy.Subscriber('/robo_forger/point', Point, self.recv_point)
 
+        # Initialize a default Twist message (all values 0)
+        self.twist = Twist()
 
     # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm. The X parameter defines
     # distances to the left, Y defines distances up, and Z defines distances forward.
@@ -86,6 +89,22 @@ class RoboForgerIK(object):
 
         return q0, q1, q2
 
+
+    # Instructs the robot to drive for a specified amount of time, at a specified linear velocity. Can be
+    #   used as a utility function for navigating the robot along the board.
+    def drive(self, time, vel):
+
+        # Set velocity, publish twist message, and give robot time to move
+        self.twist.linear.x = vel
+        self.twist_pub.publish(self.twist)
+        rospy.sleep(time)
+
+        # Stop the robot
+        self.twist.linear.x = 0
+        self.twist_pub.publish(self.twist)
+
+
+    # Helper function that moves the marker attached to the robot's end effector based on joint position parameters
     def move_marker_to_pose(self, a, b, c, d=None, delay=0):
         
         # Angle limits for Turtlebot3
@@ -160,7 +179,6 @@ class RoboForgerIK(object):
 
     # Swings the Turtlebot3 arm around to a good starting position, and then waits before closing the gripper
     def reset_arm_position(self):
-        print("[ROBO IK]  Resetting the arm.")
 
         # Move the arm to a starting position
         self.move_marker(0.27, 0.2, 0.0, 1)
@@ -181,21 +199,20 @@ class RoboForgerIK(object):
             self.move_group_gripper.go(gripper_joint_goal_closed, wait=True)
             self.move_group_gripper.stop()
             rospy.sleep(EXTRA_DELAY)
-        self.arm_ready = True
+
         print('Ready!')
 
-    def draw_next_point(self, point):
-        if not self.arm_ready:
-            print("[ROBO IK ERROR] Can't draw next point, arm not ready.")
-            return
-        print("[ROBO IK] Next point: (", point.x, ',', point.y, ') | START = ', str(point.start))
+    # Callback for the receipt of a point, which instructs the robot to move or draw to that point
+    def recv_point(self, data):
 
-        pt = np.array([point.x, point.y])
+        # Get point and compute distance to point
+        pt = np.array([data.x, data.y])
         dist = np.linalg.norm(self.draw_pos - pt)
 
+        print()
+        print()
         print("dist: ", dist)
         print("pt: ", pt)
-
 
         # If the end effector is already aclose enough to the point, ignore the move
         if dist < 0.02:
@@ -212,7 +229,7 @@ class RoboForgerIK(object):
         self.draw_pos *= 0.2
 
         # If this is a starting point, place the marker there; otherwise, draw to the point
-        if point.start:
+        if data.start:
             print('Lifting')
             self.move_marker(lift_dist, self.draw_pos[1], self.draw_pos[0], 1)
             print('Going to start')
@@ -226,25 +243,6 @@ class RoboForgerIK(object):
         # Convert out of robot-centric coordinates
         self.draw_pos = pt*5
 
-    def process_scan(self, data):
-        return
-        # Get the lidar distances
-        d = data.ranges
-        # Filter out bogus 0's
-        d = list(filter(lambda x: x != 0, d))
-        # Filter out bogus infinities
-        d = list(filter(lambda x: x != np.inf, d))
-
-        if len(d) == 0:
-            return
-
-        # Find the closest distance
-        d = min(d)
-        print('d', d)
-
-        # Weighted average with previous distance
-        weight = 0.1
-        self.board_dist = (self.board_dist * (1 - weight)) + (d * weight)
 
     # Reset the arm position, and then wait to receive points
     def run(self):

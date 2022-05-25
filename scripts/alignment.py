@@ -17,7 +17,7 @@ class Alignment(object):
     # Constructor parameters
     #   k_p_ang:         proportional control factor controlling how much the error in
     #                      angle affects the angular velocity 
-    def __init__(self, k_p_ang=0.01):        
+    def __init__(self, k_p_ang=0.0004):        
         # Start rospy node.
         rospy.init_node("wall_alignment")
 

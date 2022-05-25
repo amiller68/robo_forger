@@ -49,8 +49,9 @@ The computer vision algorithm is fed the orange maple leaf on the left. The turt
 6. Terminal 5
     1. Run "roslaunch turtlebot3_manipulation_moveit_config move_group.launch"
 7. Terminal 6
-    1. Run "rosrun robo_forger inverse_kinematics.py"
-8. Terminal 7
+    1. Run "rosrun robo_forger main.py"
+8. Wait for the robot to be aligned with wall. It should say so in the terminal.
+9. Terminal 7
     1. Run "rosrun robo_forger image_reader.py"
 
 

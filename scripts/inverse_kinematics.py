@@ -23,7 +23,7 @@ TOP_OFFSET = 0.005
 class RoboForgerIK(object):
     def __init__(self):
         # Initialize this node
-        rospy.init_node('robo_forger_ik')
+        # rospy.init_node('robo_forger_ik')
         self.arm_ready = False
 
         # Set a reasonable starting position

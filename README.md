@@ -28,6 +28,8 @@ The computer vision algorithm is fed the orange maple leaf on the left. The turt
 *Describe in detail the robotics algorithm you implemented and each major component of your project, highlight what pieces of code contribute to these main components.*
 
 - Computer Vision: The computer vision algorithm receives an image from either the camera or a local image file. The image is first converted into grayscale and then put through a Gaussian blur filter. Edges in the image are identified using the Canny function in OpenCV which takes an image, denoises it, finds its intensity gradient, and then removes all pixels that are not on edges. Threshold values within the Canny function define the lower and upper bounds for intensity gradients that are considered edges. An array of lines is then created using the Hough Lines tranformation function within OpenCV (*HoughLinesP()*). The Hough Lines transformation identifies straight lines within an image. The parameters for the Hough Lines transformation depend on the image being used and have been hand-tuned for the maple leaf image. This array of lines is then sorted in order to group lines that are closer to one another.
+<img src="https://github.com/amiller68/robo_forger/blob/31b45fd845ce5a1ae888667ac7faeb9bea0d9af1/scripts/test_images/leaf.png" alt="Maple Leaf Image" width="300"/><img width="600" alt="Screen Shot 2022-05-25 at 3 33 54 PM" src="https://user-images.githubusercontent.com/102747072/170362215-ed82eb43-41f6-467f-81ce-b7586a0356e0.png">
+
 
 ### Execution
 *Describe how to run your code, e.g., step-by-step instructions on what commands to run in each terminal window to execute your project code.*

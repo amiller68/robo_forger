@@ -123,8 +123,10 @@ class ImageReader(object):
             prev_y = closest_line[3]
             lineArraySorted[i] = closest_line
             lineArray = np.delete(lineArray, closest_idx, axis=0)
-                
+
+        print("[IMAGE-READER] Sending points over topic")
         for line in lineArraySorted:
+            print("[IMAGE-READER] Sending line: ", line)
             x1, y1, x2, y2 = line
             self.point_pub.publish(Point(x=x1, y=y1, start=True))
             self.point_pub.publish(Point(x=x2, y=y2, start=False))

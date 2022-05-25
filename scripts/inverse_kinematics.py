@@ -10,35 +10,44 @@ from robo_forger.msg import Point
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 
+# Setup parameters:
+#   IRL: Should be set to True to add a movement delay and gripper weight compensation when running
+#     on the physical Turtlebots
+#   REGRIP: Should be set to True for the robot to open and close its gripper before running, in order
+#     to regrip the writing utensil
 IRL = True
 REGRIP = False
 
-EXTRA_DELAY = 3 if IRL else 0
+# Set up extra delay and arm weight compensation for physical Turtlebot
+EXTRA_DELAY = 5 if IRL else 0
 WEIGHT_ANGLE = 10 if IRL else 0
 
+# Offset parameters (in units of m):
+#   PUSH_OFFSET: Defines how much the robot should push the marker into the wall
+#   LIFT_OFFSET: Defines how much the robot should lift off the wall when not drawing
+#   TOP_OFFSET: Defines an offset for the robot to ease off the wall at the top of its
+#     drawing path, as a small correction to the IK
 PUSH_OFFSET =  0.002
 LIFT_OFFSET = -0.030
-TOP_OFFSET = 0.005
+TOP_OFFSET = 0.027
 
 class RoboForgerIK(object):
+
     def __init__(self):
         # Initialize this node
         # rospy.init_node('robo_forger_ik')
         self.arm_ready = False
+
 
         # Set a reasonable starting position
         self.curr_pos = (0.2, 0.2, 0.0)
         self.draw_pos = np.array([0.0, 1.0])
         self.board_dist = 0.3
 
-        # Lengths of joints used for IK
-        # Length of first joint
+        # Lengths of OpenMANIPULATOR arm joints
         self.l1 = 0.1302
-        # Length of second joint
         self.l2 = 0.124
-        # Length from the gripper joint to the marker tip
-        # self.l3 = 0.1466 # gripper front
-        self.l3 = 0.214 # pen
+        self.l3 = 0.214 # from gripper joint to marker tip
 
         # The interfaces to the group of joints making up the Turtlebot3 OpenMANIPULATOR arm and gripper
         self.move_group_arm = moveit_commander.MoveGroupCommander('arm')
@@ -47,9 +56,9 @@ class RoboForgerIK(object):
         rospy.Subscriber('/scan', LaserScan, self.process_scan)
 
 
-    # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm
+    # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm. The X parameter defines
+    # distances to the left, Y defines distances up, and Z defines distances forward.
     def compute_inverse_kinematics(self, x, y, z):
-        # X left, Y up, Z forward
 
         # The gripper takes up a certain horizontal length, so handle that
         totalDist = (z**2 + x**2)**0.5
@@ -60,94 +69,105 @@ class RoboForgerIK(object):
         # Find the base angle
         q0 = math.atan2(x, z)
 
-        # Convert z into in-plane horizontal distance for the 2 joint IK
+        # Convert z into in-plane horizontal distance for the two-joint IK
         z = (z**2 + x**2)**0.5
 
-        # Distance from base joint to gripper wrist (squared)
+        # Squared distance from base joint to gripper wrist
         d_sqr = z**2 + y**2
 
         # Use law of cosines to find IK angles
-        # print((self.l1**2 + d_sqr - self.l2**2) / (2 * self.l1 * math.sqrt(d_sqr)))
         q1 = math.acos((self.l1**2 + d_sqr - self.l2**2) / (2 * self.l1 * math.sqrt(d_sqr)))
         q2 = math.acos((self.l1**2 + self.l2**2 - d_sqr) / (2 * self.l1 * self.l2))
 
-        # Convert to robot arm coordinates
+        # Convert to robot arm coordinates. The -10.64 degree angle accounts for the rigid segment of
+        #   the arm perpendicular to the length l1.
         q1 = math.radians(-10.64) + math.radians(90) - q1 - math.atan2(y, z)
         q2 = math.radians( 10.64) + math.radians(90) - q2
 
         return q0, q1, q2
 
     def move_marker_to_pose(self, a, b, c, d=None, delay=0):
-        # Angle limits
-        # -162 < a < 162
-        # -102 < b <  90
-        #  -54 < c <  79
-        # -102 < d < 117
+        
+        # Angle limits for Turtlebot3
+        #   -162 < a < 162
+        #   -102 < b <  90
+        #    -54 < c <  79
+        #   -102 < d < 117
 
-        # The gripper angle can automatically be found
-        # (It is always horizontal)
+        # Compute the gripper position perpendicular to the wall, accounting for the weight of the arm
         if d is None:
             d = -(b + c)
-
-        # The arm has some weight irl, so do a slight offset
-        # b += math.radians(-WEIGHT_ANGLE)
-        # c += math.radians(-WEIGHT_ANGLE)
         d += math.radians(-WEIGHT_ANGLE)
 
         try:
-            # Do the motion
+
+            # Execute the motion
             s = time.time()
             self.move_group_arm.go([a, b, c, d], wait=True)
             self.move_group_arm.stop()
             e = time.time()
 
-            time_taken = e-s
+            time_taken = e - s
 
-            # Waiting seems necessary irl, so pause for a short time
+            # Pause for a short time
             sleep_time = delay + EXTRA_DELAY - time_taken
-            sleep_time = max(sleep_time, 0) # Make sure not negative!
+            sleep_time = max(sleep_time, 0) # Make sure time is positive
             rospy.sleep(sleep_time)
+            
         except moveit_commander.exception.MoveItCommanderException:
             pass
 
-    # Moves the marker to the specified (x, y, z) position
+
+    # Moves the marker attached to the robot's end effector based on an (x, y, z) position,
+    #   with a specified number of waypoints
     def move_marker(self, x, y, z, num_waypoints=1):
+
+        # Ensure we have at least one waypoint, and compute waypoint array based on current end effector position
         if num_waypoints < 1:
             num_waypoints = 1
 
         waypoints = np.linspace(self.curr_pos, [x, y, z], num_waypoints+1)[1:]
 
+        # Go to each waypoint position
         for x1, y1, z1 in waypoints:
+
             # Attempt to use IK to compute joint positions
             try:
                 q0, q1, q2 = self.compute_inverse_kinematics(x1, y1, z1)
-            # If the position cannot be reached, return
+
+            # If the position cannot be reached based on the robot's arm lengths
             except ValueError:
-                print(f"Inverse kinematics computation shows that this (x, y) position cannot be reached by the OpenMANIPULATOR arm.")
+                print(f"Inverse kinematics computation shows that this (x, y, z) position cannot be reached by the OpenMANIPULATOR arm.")
                 return
 
             # If IK computation gives angles outside of the arm's range, return
+            q0_min = math.radians(-162)
+            q0_max = math.radians(162)
             q1_min = math.radians(-103)
             q1_max = math.radians(90)
             q2_min = math.radians(-53)
             q2_max = math.radians(79)
-            if q1 < q1_min or q1 > q1_max or q2 < q2_min or q2 > q2_max:
-                print(f"Inverse kinematics computed angles {q1} and {q2}, which are outside the range of the OpenMANIPULATOR joints.")
+            if q0 < q0_min or q0 > q0_max or q1 < q1_min or q1 > q1_max or q2 < q2_min or q2 > q2_max:
+                print(f"Inverse kinematics computed angles {q0}, {q1}, and {q2}, which are outside the range of the OpenMANIPULATOR joints.")
                 return
 
+            # Move the marker based on the joint angles
             self.move_marker_to_pose(q0, q1, q2)
 
+        # Update the current end effector position
         self.curr_pos = x, y, z
+
 
     # Swings the Turtlebot3 arm around to a good starting position, and then waits before closing the gripper
     def reset_arm_position(self):
         print("[ROBO IK]  Resetting the arm.")
+
         # Move the arm to a starting position
         self.move_marker(0.27, 0.2, 0.0, 1)
 
         # Define starting positions for the open/closed gripper positions
         gripper_joint_goal_open = [0.019, 0.019]
-        gripper_joint_goal_closed = [-0.005, -0.005]
+        gripper_joint_goal_closed = [-0.01, -0.01]
 
         if REGRIP:
             # Open the gripper, and give time for the robot to execute the action
@@ -173,14 +193,17 @@ class RoboForgerIK(object):
         pt = np.array([point.x, point.y])
         dist = np.linalg.norm(self.draw_pos - pt)
 
-        print(pt)
+        print("dist: ", dist)
+        print("pt: ", pt)
 
-        if False:#dist <= 0.001:
+
+        # If the end effector is already aclose enough to the point, ignore the move
+        if dist < 0.02:
             print('Close enough, ignoring move')
             self.draw_pos = pt
             return
 
-        TOP_OFFSET = 0.027
+        # Compute lift distance and draw distance
         lift_dist = self.board_dist + LIFT_OFFSET
         draw_dist = self.board_dist + PUSH_OFFSET + TOP_OFFSET*(1-pt[1])
 
@@ -188,6 +211,7 @@ class RoboForgerIK(object):
         pt *= 0.2
         self.draw_pos *= 0.2
 
+        # If this is a starting point, place the marker there; otherwise, draw to the point
         if point.start:
             print('Lifting')
             self.move_marker(lift_dist, self.draw_pos[1], self.draw_pos[0], 1)
@@ -202,29 +226,12 @@ class RoboForgerIK(object):
         # Convert out of robot-centric coordinates
         self.draw_pos = pt*5
 
-    def process_scan(self, data):
-        return
-        # Get the lidar distances
-        d = data.ranges
-        # Filter out bogus 0's
-        d = list(filter(lambda x:x!=0, d))
-        # Filter out bogus infinities
-        d = list(filter(lambda x:x!=np.inf, d))
 
-        if len(d) == 0:
-            return
-
-        # Find the closest distance
-        d = min(d)
-        print('d', d)
-
-        # Weighted average with previous distance
-        weight = 0.1
-        self.board_dist = (self.board_dist * (1-weight)) + (d * weight)
-
+    # Reset the arm position, and then wait to receive points
     def run(self):
         self.reset_arm_position()
         rospy.spin()
+
 
 if __name__ == "__main__":
     node = RoboForgerIK()

@@ -42,11 +42,13 @@ class ImageReader(object):
         #REALTIME VISION PROCESSING
         # image = self.bridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
 
-        # Converts an image to grayscale, identifies lines, creates array of line endpoints
+        # Converts an image to grayscale to simplify processing
         grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+        # Blurs the image to remove noise that would cause false positive line detections
         blurred_grayscale = cv2.GaussianBlur(grayscale, (5, 5), 0)
 
+        # Find the most prominent edges with the Canny algorithm
         low_threshold = 50
         high_threshold = 150
         edges = cv2.Canny(blurred_grayscale, low_threshold, high_threshold)
@@ -63,18 +65,18 @@ class ImageReader(object):
         min_line_length = 15  # min # of pixels making a line
         max_line_gap = 50  # max gap in pixels between line segments (this might need to change)
 
-        lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap) 
+        # HoughLines turns pixel-based edges into line segments defined by start and end points
+        lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap)
         for line in lineArray:
             x1, y1, x2, y2 = line[0]
             cv2.line(edges, (x1, y1), (x2, y2), (255, 0, 0), 3)
 
-
         # Show result
         edges = cv2.resize(edges, dsize=(600, 600))
-        cv2.imshow("Result Image", edges) 
-        cv2.waitKey(0)      
+        cv2.imshow("Result Image", edges)
+        cv2.waitKey(0)
 
-        # TEMP LOGIC TO DRAW A SQUARE
+        # Test points for drawing a square
         if False:
             lineArray = [
                 [[           0,            0,            0, edges.shape[1]]],
@@ -84,6 +86,24 @@ class ImageReader(object):
             ]
             lineArray = lineArray*10
 
+        # Test points for a startup calibration routine
+        if False:
+            lineArray = [
+                [[ 0, 0, 0, 0]],
+                [[ 0, 0.5, 0, 0.5]],
+                [[ 0, 1, 0, 1]],
+                [[ 0.5, 1, 0.5, 1]],
+                [[ 1, 1, 1, 1]],
+                [[ 1, 0.5, 1, 0.5]],
+                [[ 1, 0, 1, 0]],
+                [[ 0.5, 0, 0.5, 0]],
+            ]
+            lineArray = lineArray*10
+            lineArray = np.array(lineArray)
+            lineArray = np.squeeze(lineArray, axis=1)
+            lineArray = lineArray.astype(float)
+
+        # Convert the lines from image coordinates to robot/drawing coordinates
         lineArray = np.array(lineArray)
         lineArray = np.squeeze(lineArray, axis=1)
         lineArray = lineArray.astype(float) / max(edges.shape)
@@ -115,7 +135,7 @@ class ImageReader(object):
             prev_y = closest_line[3]
             lineArraySorted[i] = closest_line
             lineArray = np.delete(lineArray, closest_idx, axis=0)
-                
+
         for line in lineArraySorted:
             x1, y1, x2, y2 = line
             self.point_pub.publish(Point(x=x1, y=y1, start=True))

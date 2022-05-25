@@ -18,7 +18,7 @@ WEIGHT_ANGLE = 10 if IRL else 0
 
 PUSH_OFFSET =  0.002
 LIFT_OFFSET = -0.030
-TOP_OFFSET = 0.005
+TOP_OFFSET = 0.027
 
 class RoboForgerIK(object):
     def __init__(self):
@@ -161,7 +161,7 @@ class RoboForgerIK(object):
 
         # Define starting positions for the open/closed gripper positions
         gripper_joint_goal_open = [0.019, 0.019]
-        gripper_joint_goal_closed = [-0.005, -0.005]
+        gripper_joint_goal_closed = [-0.01, -0.01]
 
         if REGRIP:
             # Open the gripper, and give time for the robot to execute the action
@@ -186,14 +186,19 @@ class RoboForgerIK(object):
 
         print()
         print()
-        print(pt)
+        print("dist: ", dist)
+        print("pt: ", pt)
 
-        if False:#dist <= 0.001:
+        # if False:#dist <= 0.001:
+        #     print('Close enough, ignoring move')
+        #     self.draw_pos = pt
+        #     return
+
+        if dist < 0.02:
             print('Close enough, ignoring move')
             self.draw_pos = pt
             return
 
-        TOP_OFFSET = 0.027
         lift_dist = self.board_dist + LIFT_OFFSET
         draw_dist = self.board_dist + PUSH_OFFSET + TOP_OFFSET*(1-pt[1])
 

@@ -50,16 +50,25 @@ class ImageReader(object):
 
         # cv2.imshow('image', image) #Original image
         # cv2.imshow('edges', edges) #Edges image
-        # cv2.waitKey(1)
+        # cv2.waitKey(0)
+
+        # 30, 15, 50 is the best for maple leaf!
 
         # HoughLinesP tranformation parameteres (Taken from Github so these parameters may need to be adjusted for our use)
         theta = np.pi / 180  # angular resolution in radians of the grid
-        threshold = 15  # min # of interserctions
-        min_line_length = 50  # min # of pixels making a line
-        max_line_gap = 20  # max gap in pixels between line segments (this might need to change)
+        threshold = 30  # min # of interserctions
+        min_line_length = 15  # min # of pixels making a line
+        max_line_gap = 50  # max gap in pixels between line segments (this might need to change)
 
-        lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap)
+        lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap) 
+        for line in lineArray:
+            x1, y1, x2, y2 = line[0]
+            cv2.line(edges, (x1, y1), (x2, y2), (255, 0, 0), 3)
 
+        # Show result
+        edges = cv2.resize(edges, dsize=(600, 600))
+        cv2.imshow("Result Image", edges) 
+        cv2.waitKey(0)      
 
         # TEMP LOGIC TO DRAW A SQUARE
         if False:
@@ -79,7 +88,31 @@ class ImageReader(object):
         # Transform x values from [0, 1] to [-0.5, 0.5]
         lineArray[:, [0,2]] = lineArray[:, [0,2]] - 0.5
 
-        for line in lineArray:
+        # Sort line array to go to closest point
+        lineArraySorted = np.copy(lineArray)
+        prev_x, prev_y = -0.5, -0.5
+        for i in range(len(lineArraySorted)):
+            closest_dist = np.inf
+            closest_line = None
+            closest_idx = -1
+            for j, line in enumerate(lineArray):
+                x1, y1, x2, y2 = line
+                dist = (prev_x - x1)**2 + (prev_y - y1)**2
+                dist_flipped = (prev_x - x2)**2 + (prev_y - y2)**2
+                if dist < closest_dist:
+                    closest_dist = dist
+                    closest_line = line
+                    closest_idx = j
+                if dist_flipped < closest_dist:
+                    closest_dist = dist_flipped
+                    closest_line = [x2, y2, x1, y1]
+                    closest_idx = j
+            prev_x = closest_line[2]
+            prev_y = closest_line[3]
+            lineArraySorted[i] = closest_line
+            lineArray = np.delete(lineArray, closest_idx, axis=0)
+                
+        for line in lineArraySorted:
             x1, y1, x2, y2 = line
             self.point_pub.publish(Point(x=x1, y=y1, start=True))
             self.point_pub.publish(Point(x=x2, y=y2, start=False))

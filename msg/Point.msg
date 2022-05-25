@@ -1,3 +1,3 @@
-uint16 x
-uint16 y
-bool continuous
+float32 x
+float32 y
+bool start

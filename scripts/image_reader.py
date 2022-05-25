@@ -42,11 +42,13 @@ class ImageReader(object):
         #REALTIME VISION PROCESSING
         # image = self.bridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
 
-        # Converts an image to grayscale, identifies lines, creates array of line endpoints
+        # Converts an image to grayscale to simplify processing
         grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+        # Blurs the image to remove noise that would cause false positive line detections
         blurred_grayscale = cv2.GaussianBlur(grayscale, (5, 5), 0)
 
+        # Find the most prominent edges with the Canny algorithm
         low_threshold = 50
         high_threshold = 150
         edges = cv2.Canny(blurred_grayscale, low_threshold, high_threshold)
@@ -63,7 +65,7 @@ class ImageReader(object):
         min_line_length = 15  # min # of pixels making a line
         max_line_gap = 50  # max gap in pixels between line segments (this might need to change)
 
-        lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap)
+        lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap) 
         for line in lineArray:
             x1, y1, x2, y2 = line[0]
             cv2.line(edges, (x1, y1), (x2, y2), (255, 0, 0), 3)
@@ -115,11 +117,9 @@ class ImageReader(object):
             prev_y = closest_line[3]
             lineArraySorted[i] = closest_line
             lineArray = np.delete(lineArray, closest_idx, axis=0)
-
-        print("[IMAGE READER] Feeding lines...")
+                
         for line in lineArraySorted:
             x1, y1, x2, y2 = line
-            print("[IMAGE READER] Sending line: ", line)
             self.point_pub.publish(Point(x=x1, y=y1, start=True))
             self.point_pub.publish(Point(x=x2, y=y2, start=False))
             rospy.sleep(1)

@@ -74,6 +74,8 @@ The computer vision algorithm is fed the orange maple leaf on the left. The turt
 **Future Work:**
 - Setting the robot up with a server that continually serves the robot pictures to draw. This server could accept and queue images submitted by observers.
 - Installing this system as an interactive exhibit in MAAD
+- Working on computer vision to remove the presence of double lines.
+- Testing the robot with different drawing tools and canvases
 
 **Takeaways:**
 - The weight of the manipulator arm itself can affect the accuracy and movement of the joints within the arm.

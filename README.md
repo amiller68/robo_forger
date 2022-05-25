@@ -54,9 +54,14 @@ The computer vision algorithm is fed the orange maple leaf on the left. The turt
 6. Terminal 5
     1. Run "roslaunch turtlebot3_manipulation_moveit_config move_group.launch"
 7. Terminal 6
-    1. Run "rosrun robo_forger inverse_kinematics.py"
-8. Terminal 7
+    1. Run "rosrun robo_forger main.py"
+8. Wait for the robot to be aligned. 
+   1. If `ALIGN_ROBOT` in `main.py` is set to `True`, then the robot will attempt to align itself with the wall in front of it.
+   2. Otherwise, the robot controller will state that it is aligned and prepare to start drawing points.
+   3. Wait for the process running `main.py` to print `[ROBO FORGER] Ready to Forge` before moving on the next step
+9. Terminal 7
     1. Run "rosrun robo_forger image_reader.py"
+10. At this point, the robot should start drawing our test image on the wall to its left.
 
 
 ### Challenges, Future Work, & Takeaways
@@ -67,7 +72,8 @@ The computer vision algorithm is fed the orange maple leaf on the left. The turt
 -
 
 **Future Work:**
-- (Insert Future Work)
+- Setting the robot up with a server that continually serves the robot pictures to draw. This server could accept and queue images submitted by observers.
+- Installing this system as an interactive exhibit in MAAD
 
 **Takeaways:**
 - The weight of the manipulator arm itself can affect the accuracy and movement of the joints within the arm.

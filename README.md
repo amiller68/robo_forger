@@ -11,6 +11,7 @@
 **Successes:**
 
 Computer Vision: The turtlebot is successfully able to take an image, identify line segments within that image, and then convert those segments into points that can be sent to the robot.
+
 Inverse Kinematics: The turtlebot is able to receive a set of points (taken from the computer vision algorithm) and use its manipulator arm to draw those line segments on a vertical surface next to it. The robot is also able to use its LiDAR scanner to understand its distance from the wall and adjust the angles of its motors to align properly with the wall. 
 
 The computer vision algorithm is fed the orange maple leaf on the left. The turtlebot then outputs the drawing as shown below. 
@@ -18,13 +19,15 @@ The computer vision algorithm is fed the orange maple leaf on the left. The turt
 
 **Main Components:**
 - Drawing Implement Attachment: This implement attachment consists of a 3D-printed holder, spring loaded pen holder, and a thin-tipped pen. The 3D-printed holder is designed to allow for the robot manipualtor arm grip to properly grab the pen. The spring loaded pen holder is inserted into the 3D-printed holder and allows for the pen to have a bit "give" when drawing on the wall. This increases the liklihood of the pen making contact with the drawing surface for the entirety of the drawing. 
-- Computer Vision: 
+- Computer Vision: The computer vision algorithm takes in an image and converts it into an array of points that is then published to the turtlebot. 
 - LiDAR: The LiDAR sensor is used to measure the distance between the robot and the wall - this is then incorporated into the kinematics algorithm in order to determine the distance to which the arm should extend the pen.
 - Inverse Kinematics Algorithm: 
 
 
 ### System Architecture
 *Describe in detail the robotics algorithm you implemented and each major component of your project, highlight what pieces of code contribute to these main components.*
+
+- Computer Vision: The computer vision algorithm receives an image from either the camera or a local image file. The image is first converted into grayscale and then put through a Gaussian blur filter. Edges in the image are identified using the Canny function in OpenCV which takes an image, denoises it, finds its intensity gradient, and then removes all pixels that are not on edges. Threshold values within the Canny function define the lower and upper bounds for intensity gradients that are considered edges. An array of lines is then created using the Hough Lines tranformation function within OpenCV (*HoughLinesP()*). The Hough Lines transformation identifies straight lines within an image. The parameters for the Hough Lines transformation depend on the image being used and have been hand-tuned for the maple leaf image. This array of lines is then sorted in order to group lines that are closer to one another.
 
 ### Execution
 *Describe how to run your code, e.g., step-by-step instructions on what commands to run in each terminal window to execute your project code.*

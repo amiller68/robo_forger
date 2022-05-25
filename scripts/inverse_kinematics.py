@@ -140,36 +140,46 @@ class RoboForgerIK(object):
     # Moves the marker attached to the robot's end effector based on an (x, y, z) position,
     #   with a specified number of waypoints
     def move_marker(self, x, y, z, num_waypoints=1):
-        
+
+        # Ensure we have at least one waypoint, and compute waypoint array based on current end effector position
         if num_waypoints < 1:
             num_waypoints = 1
 
         waypoints = np.linspace(self.curr_pos, [x, y, z], num_waypoints+1)[1:]
 
+        # Go to each waypoint position
         for x1, y1, z1 in waypoints:
+
             # Attempt to use IK to compute joint positions
             try:
                 q0, q1, q2 = self.compute_inverse_kinematics(x1, y1, z1)
-            # If the position cannot be reached, return
+
+            # If the position cannot be reached based on the robot's arm lengths
             except ValueError:
-                print(f"Inverse kinematics computation shows that this (x, y) position cannot be reached by the OpenMANIPULATOR arm.")
+                print(f"Inverse kinematics computation shows that this (x, y, z) position cannot be reached by the OpenMANIPULATOR arm.")
                 return
 
             # If IK computation gives angles outside of the arm's range, return
+            q0_min = math.radians(-162)
+            q0_max = math.radians(162)
             q1_min = math.radians(-103)
             q1_max = math.radians(90)
             q2_min = math.radians(-53)
             q2_max = math.radians(79)
-            if q1 < q1_min or q1 > q1_max or q2 < q2_min or q2 > q2_max:
-                print(f"Inverse kinematics computed angles {q1} and {q2}, which are outside the range of the OpenMANIPULATOR joints.")
+            if q0 < q0_min or q0 > q0_max or q1 < q1_min or q1 > q1_max or q2 < q2_min or q2 > q2_max:
+                print(f"Inverse kinematics computed angles {q0}, {q1}, and {q2}, which are outside the range of the OpenMANIPULATOR joints.")
                 return
 
+            # Move the marker based on the joint angles
             self.move_marker_to_pose(q0, q1, q2)
 
+        # Update the current end effector position
         self.curr_pos = x, y, z
+
 
     # Swings the Turtlebot3 arm around to a good starting position, and then waits before closing the gripper
     def reset_arm_position(self):
+
         # Move the arm to a starting position
         self.move_marker(0.27, 0.2, 0.0, 1)
 
@@ -192,9 +202,10 @@ class RoboForgerIK(object):
 
         print('Ready!')
 
+    # Callback for the receipt of a point, which instructs the robot to move or draw to that point
     def recv_point(self, data):
-        # print('Got point %.3f %.3f %s' % (data.x, data.y, str(data.start)))
 
+        # Get point and compute distance to point
         pt = np.array([data.x, data.y])
         dist = np.linalg.norm(self.draw_pos - pt)
 
@@ -203,16 +214,13 @@ class RoboForgerIK(object):
         print("dist: ", dist)
         print("pt: ", pt)
 
-        # if False:#dist <= 0.001:
-        #     print('Close enough, ignoring move')
-        #     self.draw_pos = pt
-        #     return
-
+        # If the end effector is already aclose enough to the point, ignore the move
         if dist < 0.02:
             print('Close enough, ignoring move')
             self.draw_pos = pt
             return
 
+        # Compute lift distance and draw distance
         lift_dist = self.board_dist + LIFT_OFFSET
         draw_dist = self.board_dist + PUSH_OFFSET + TOP_OFFSET*(1-pt[1])
 
@@ -220,6 +228,7 @@ class RoboForgerIK(object):
         pt *= 0.2
         self.draw_pos *= 0.2
 
+        # If this is a starting point, place the marker there; otherwise, draw to the point
         if data.start:
             print('Lifting')
             self.move_marker(lift_dist, self.draw_pos[1], self.draw_pos[0], 1)
@@ -234,29 +243,12 @@ class RoboForgerIK(object):
         # Convert out of robot-centric coordinates
         self.draw_pos = pt*5
 
-    def process_scan(self, data):
-        return
-        # Get the lidar distances
-        d = data.ranges
-        # Filter out bogus 0's
-        d = list(filter(lambda x:x!=0, d))
-        # Filter out bogus infinities
-        d = list(filter(lambda x:x!=np.inf, d))
 
-        if len(d) == 0:
-            return
-
-        # Find the closest distance
-        d = min(d)
-        print('d', d)
-
-        # Weighted average with previous distance
-        weight = 0.1
-        self.board_dist = (self.board_dist * (1-weight)) + (d * weight)
-
+    # Reset the arm position, and then wait to receive points
     def run(self):
         self.reset_arm_position()
         rospy.spin()
+
 
 if __name__ == "__main__":
     node = RoboForgerIK()

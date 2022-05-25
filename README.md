@@ -22,6 +22,11 @@ The computer vision algorithm is fed the orange maple leaf on the left. The turt
 - Inverse Kinematics Algorithm: The inverse kinematics algorithm receives a point in 3D space relative to the base of the turtlebot's arm, and computes the arm joint angles necessary to move the pen tip to that 3D point.
 - Communication: The computer vision algorithm determines the line endpoint positions, and pipes these through the inverse kinematics algorithm to determine where to put the robot arm. The LiDAR sensor provides an offset to these point positions right before the arm configuration is determined.
 
+**Individual Contributions:**
+- Samir Rajani: Worked on the inverse kinematics algorithm for computing joint angles in the forward/reverse and up/down plane, implemented the drawing order for the line array to decide the order and direction in which lines should be drawn to reduce drawing time and improve accuracy, implemented initial version of alignment.
+- Rory Butler: Worked on the extension of the inverse kinematics to 3D space by computing left/right angles and handling the projection into the 2D plane and implemented correction terms for inverse kinematics on the physical Turtlebot; helped develop the computer vision component.
+- Alex Miller: Worked on code for aligning the Turtlebot, coming up with ways to deal with the inaccuracy of the LiDAR, and integrated the alignment, computer vision, and inverse kinematics components together.
+- Nick Auen: Worked primarily on computer vision component, including edge detection and conversion to a line array, getting versions working that both used the live feed from the robot camera and with images being fed directly. 
 
 ### System Architecture
 *Describe in detail the robotics algorithm you implemented and each major component of your project, highlight what pieces of code contribute to these main components.*

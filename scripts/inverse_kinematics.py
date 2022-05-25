@@ -22,10 +22,11 @@ REGRIP = False
 EXTRA_DELAY = 5 if IRL else 0
 WEIGHT_ANGLE = 10 if IRL else 0
 
-# Offset parameters:
-#   PUSH_OFFSET: Defines much the robot should push the marker into the wall
-#   LIFT_OFFSET: Defines 
-#   TOP_OFFSET: Defines 
+# Offset parameters (in units of m):
+#   PUSH_OFFSET: Defines how much the robot should push the marker into the wall
+#   LIFT_OFFSET: Defines how much the robot should lift off the wall when not drawing
+#   TOP_OFFSET: Defines an offset for the robot to ease off the wall at the top of its
+#     drawing path, as a small correction to the IK
 PUSH_OFFSET =  0.002
 LIFT_OFFSET = -0.030
 TOP_OFFSET = 0.027

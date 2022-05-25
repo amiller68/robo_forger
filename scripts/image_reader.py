@@ -63,7 +63,7 @@ class ImageReader(object):
         min_line_length = 15  # min # of pixels making a line
         max_line_gap = 50  # max gap in pixels between line segments (this might need to change)
 
-        lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap) 
+        lineArray = cv2.HoughLinesP(edges, 1, theta, threshold, np.array([]), min_line_length, max_line_gap)
         for line in lineArray:
             x1, y1, x2, y2 = line[0]
             cv2.line(edges, (x1, y1), (x2, y2), (255, 0, 0), 3)
@@ -115,9 +115,11 @@ class ImageReader(object):
             prev_y = closest_line[3]
             lineArraySorted[i] = closest_line
             lineArray = np.delete(lineArray, closest_idx, axis=0)
-                
+
+        print("[IMAGE READER] Feeding lines...")
         for line in lineArraySorted:
             x1, y1, x2, y2 = line
+            print("[IMAGE READER] Sending line: ", line)
             self.point_pub.publish(Point(x=x1, y=y1, start=True))
             self.point_pub.publish(Point(x=x2, y=y2, start=False))
             rospy.sleep(1)

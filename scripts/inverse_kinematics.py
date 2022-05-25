@@ -226,6 +226,25 @@ class RoboForgerIK(object):
         # Convert out of robot-centric coordinates
         self.draw_pos = pt*5
 
+    def process_scan(self, data):
+        return
+        # Get the lidar distances
+        d = data.ranges
+        # Filter out bogus 0's
+        d = list(filter(lambda x: x != 0, d))
+        # Filter out bogus infinities
+        d = list(filter(lambda x: x != np.inf, d))
+
+        if len(d) == 0:
+            return
+
+        # Find the closest distance
+        d = min(d)
+        print('d', d)
+
+        # Weighted average with previous distance
+        weight = 0.1
+        self.board_dist = (self.board_dist * (1 - weight)) + (d * weight)
 
     # Reset the arm position, and then wait to receive points
     def run(self):

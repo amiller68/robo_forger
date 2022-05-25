@@ -161,10 +161,10 @@ class RoboForger(object):
         # While We're not close to a wall to draw on
         while self.goal_wall_distance < self.scan_front_dist:
             # Move our robot to the wall
-            movement.linear.x = (
-                (self.scan_front_dist - self.goal_wall_distance) / (self.scan_max_range - self.goal_wall_distance)
-            ) * self.linear_speed
-
+            movement.linear.x = max(
+                (self.scan_front_dist - self.goal_wall_distance) / (self.scan_max_range - self.goal_wall_distance) * self.linear_speed,
+                0.001
+            )
             self.move.publish(movement)
 
         # Stop the robot with an empty twist command

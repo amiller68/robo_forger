@@ -5,14 +5,16 @@
 ### Project Description
 *Describe the goal of your project, why it's interesting, what you were able to make your robot do, and what the main components of your project are and how they fit together - please include diagrams and gifs when appropriate.*
 
-**Goal:** This project aims to have the turtlebot take an image fed to it (either from a file or live camera feed), use computer vision to identify line segments within the image, and have the turtlebot use its robot manipulator arm to draw this image on a wall. This goal requires the incorporation of multiple sensors, tools, and algorithms: live camera feed, LiDAR scanner, robot manipulator arm, computer vision (using OpenCV), and a custom built inverse kinematics algortihm.
+**Goal:** This project aims to have the turtlebot take an image fed to it (either from a file or live camera feed), use computer vision to identify line segments within the image, and use the OpenMANIPULATOR arm to draw this image on a wall. This goal requires the incorporation of multiple sensors, tools, and algorithms: the LiDAR scanner (for alignment), the OpenMANIPULATOR arm, computer vision (using OpenCV), and a custom inverse kinematics algortihm.
+
+**Why This is Interesting:** Inverse kinematics is a far more difficult problem than forward kinematics, and drawing on a flat surface while being able to lift up and put down a marker requires use of all four degrees of freedom afforded by the OpenMANIPULATOR arm. The relatively limited range of the OpenMANIPULATOR arm and the imprecision of its movements, along with network lag and the weight of a physical drawing implement, also make drawing an image using a physical turtlebot a daunting task.
 
 **Successes:**
-Computer Vision: The turtlebot is successfully able to take an image, identify line segments within that image, and then convert those segments into points that can be sent to the robot.
+Computer Vision: The turtlebot is successfully able to take an image, identify line segments within that image, and then convert those segments into points that can be sent to the robot, performing a coordinate transformation to place these points within the range of the robot's arm. The line segments are also ordered such that minimal movement is required between finishing one line and starting the next.
 
-Inverse Kinematics: The turtlebot is able to receive a set of points (taken from the computer vision algorithm) and use its manipulator arm to draw those line segments on a vertical surface next to it. The robot is also able to use its LiDAR scanner to understand its distance from the wall and adjust the angles of its motors to align properly with the wall.
+Inverse Kinematics: The turtlebot is able to receive a set of points (taken from the computer vision algorithm) and use its manipulator arm to draw those line segments on a vertical surface next to it using a custom 4 DOF inverse kinematics solver, lifting its arm between non-adjacent line segment endpoints. The robot is also able to use its LiDAR scanner to understand its distance from the wall and adjust the angles of its motors to align properly with the wall, but this is contingent on network lag and the precision of the LiDAR; manual adjustments are in general necessary.
 
-The computer vision algorithm is fed the orange maple leaf on the left. The turtlebot then outputs the drawing as shown below.
+**Demo:**The computer vision algorithm is fed the red maple leaf on the left. The turtlebot then outputs the drawing as shown below.
 <img src="https://github.com/amiller68/robo_forger/blob/31b45fd845ce5a1ae888667ac7faeb9bea0d9af1/scripts/test_images/leaf.png" alt="Maple Leaf Image" width="300"/><img src="https://github.com/amiller68/robo_forger/blob/520d4eb5c19f63b976a737f161a9c06c8939f991/ezgif-4-180f11597a.gif" alt="Maple Leaf Gif" width="520"/>
 
 **Main Components:**

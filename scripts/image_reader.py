@@ -30,7 +30,7 @@ class ImageReader(object):
 
     # Helper function that sorts a generated line array so that the lines are drawn in an order that
     #   requires minimal movement 
-    def sortLineArray(lineArray):
+    def sortLineArray(self, lineArray):
 
         # Initialize sorted line array and endpoints of previous line
         lineArraySorted = np.copy(lineArray)

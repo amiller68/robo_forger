@@ -16,7 +16,7 @@ from geometry_msgs.msg import Twist
 #   REGRIP: Should be set to True for the robot to open and close its gripper before running, in order
 #     to regrip the writing utensil
 IRL = True
-REGRIP = False
+REGRIP = True
 
 # Set up extra delay and arm weight compensation for physical Turtlebot
 EXTRA_DELAY = 5 if IRL else 0

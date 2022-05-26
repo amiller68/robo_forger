@@ -17,7 +17,7 @@ class Alignment(object):
     # Constructor parameters
     #   k_p_ang:         proportional control factor controlling how much the error in
     #                      angle affects the angular velocity 
-    def __init__(self, k_p_ang=0.0004):        
+    def __init__(self, k_p_ang=0.004):        
         # Start rospy node.
         rospy.init_node("wall_alignment")
 
@@ -32,6 +32,9 @@ class Alignment(object):
         lin = Vector3()
         ang = Vector3()
         self.twist = Twist(linear=lin,angular=ang)
+
+        # Initialize constructor parameters.
+        self.k_p_ang = k_p_ang
 
 
     # Determine nearest object by looking at scan data from all angles

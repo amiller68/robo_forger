@@ -32,7 +32,7 @@ LIFT_OFFSET = -0.030
 TOP_OFFSET = 0.027
 
 class RoboForgerIK(object):
-
+    """ This node computes and sends joint positions for inverse kinematics. """
     def __init__(self):
 
         # Initialize the inverse kinematics node
@@ -59,15 +59,16 @@ class RoboForgerIK(object):
         # Initialize a default Twist message (all values 0)
         self.twist = Twist()
 
-    # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm. The X parameter defines
-    # distances to the left, Y defines distances up, and Z defines distances forward.
+
+    # Executes the inverse kinematics algorithm, as computed for the OpenMANIPULATOR arm. The x parameter defines
+    # distances to the left, y defines distances up, and z defines distances forward.
     def compute_inverse_kinematics(self, x, y, z):
 
-        # The gripper takes up a certain horizontal length, so handle that
+        # Handle horizontal length of gripper
         totalDist = (z**2 + x**2)**0.5
-        targetDistIK = totalDist-self.l3
-        z *= targetDistIK/totalDist
-        x *= targetDistIK/totalDist
+        targetDistIK = totalDist - self.l3
+        z *= targetDistIK / totalDist
+        x *= targetDistIK / totalDist
 
         # Find the base angle
         q0 = math.atan2(x, z)
@@ -75,7 +76,7 @@ class RoboForgerIK(object):
         # Convert z into in-plane horizontal distance for the two-joint IK
         z = (z**2 + x**2)**0.5
 
-        # Squared distance from base joint to gripper wrist
+        # Get squared distance from base joint to gripper wrist
         d_sqr = z**2 + y**2
 
         # Use law of cosines to find IK angles
@@ -154,7 +155,7 @@ class RoboForgerIK(object):
             try:
                 q0, q1, q2 = self.compute_inverse_kinematics(x1, y1, z1)
 
-            # If the position cannot be reached based on the robot's arm lengths
+            # If the position cannot be reached based on the robot's arm lengths, return
             except ValueError:
                 print(f"Inverse kinematics computation shows that this (x, y, z) position cannot be reached by the OpenMANIPULATOR arm.")
                 return
@@ -201,6 +202,7 @@ class RoboForgerIK(object):
             rospy.sleep(EXTRA_DELAY)
 
         print('Ready!')
+
 
     # Callback for the receipt of a point, which instructs the robot to move or draw to that point
     def recv_point(self, data):

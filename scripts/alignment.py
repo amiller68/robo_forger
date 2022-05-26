@@ -33,8 +33,6 @@ class Alignment(object):
         ang = Vector3()
         self.twist = Twist(linear=lin,angular=ang)
 
-        # Initialize constructor parameters.
-        self.k_p_ang = k_p_ang
 
     # Determine nearest object by looking at scan data from all angles
     #   the robot, set velocity based on that information, and
@@ -48,7 +46,8 @@ class Alignment(object):
 
         # Iterate through data.ranges, which contains the nearest object
         #   at each degree increment. If the value is non-zero, there is
-        #   an object in that direction.
+        #   an object in that direction. Use only indices (70, 110) to avoid
+        #   LiDAR detecting the robot arm.
         for i in range(70, 110):
             if data.ranges[i] > 0.0 and data.ranges[i] < nearest_distance:
                 nearest_index = i
@@ -61,13 +60,10 @@ class Alignment(object):
             self.twist_pub.publish(self.twist)
             return
 
-        # Calculate the discrepancy between the robot's distance and angle
-        #   and the desired wall distance and the angle (90 degrees),
-        #   respectively. The ternary operator is used to convert the range
-        #   of angles so that proportional control makes the robot turn in the
-        #   right direction.
+        # Calculate the discrepancy between the robot's angle and the desired angle (90 degrees).
         error_angle = nearest_index - 90
 
+        # If we are aligned, stop the robot and shut down.
         if error_angle == 0:
             print("Aligned!")
             self.twist.linear.x = 0

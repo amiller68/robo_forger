@@ -45,23 +45,21 @@ The computer vision algorithm is fed the orange maple leaf on the left. The turt
     1. SSH into the turtlebot3
     2. Run "set_ip (insert last 3 digits of your ip)"
     3. Run "bringup"
-4. Terminal 3
-    1. SSH into the turtlebot3 in another terminal
-    2. Run "set_ip (insert last 3 digits of your ip)"
-    3. Run "bringup_cam"
 5. Terminal 4
     1. Run "roslaunch turtlebot3_manipulation_bringup turtlebot3_manipulation_bringup.launch"
 6. Terminal 5
     1. Run "roslaunch turtlebot3_manipulation_moveit_config move_group.launch"
-7. Terminal 6
-    1. Run "rosrun robo_forger main.py"
-8. Wait for the robot to be aligned. 
-   1. If `ALIGN_ROBOT` in `main.py` is set to `True`, then the robot will attempt to align itself with the wall in front of it.
-   2. Otherwise, the robot controller will state that it is aligned and prepare to start drawing points.
-   3. Wait for the process running `main.py` to print `[ROBO FORGER] Ready to Forge` before moving on the next step
-9. Terminal 7
+7. Terminal 6 (OPTIONAL: alignment is generally imprecise due to LiDAR limitations)
+    1. Place the robot so that it is roughly facing the left wall (within about 30 degrees or so)
+    2. Run "rosrun robo_forger alignment.py"
+    3. Wait for the program to terminate, at which point the robot should be aligned with the wall
+8. Terminal 7
+    1. Run "rosrun robo_forger inverse_kinematics.py", ensuring the REGRIP parameter is set to True in the code if the robot is not already holding the writing utensil.
+    2. If REGRIP is set to True, you will have a few seconds after the robot's gripper opens to insert the writing utensil before it closes again.
+9. Terminal 8 
     1. Run "rosrun robo_forger image_reader.py"
-10. At this point, the robot should start drawing our test image on the wall to its left.
+    2. At this point, the robot should start drawing our test image on the wall to its left.
+    3. The distance to the drawing surface must be quite precise (on the order of millimeters), so make adjustments to the position of the drawing surface or the robot until you are satisfied with the drawing.
 
 
 ### Challenges, Future Work, & Takeaways

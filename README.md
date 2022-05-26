@@ -76,14 +76,6 @@ The computer vision algorithm is fed the orange maple leaf on the left. The turt
 - Testing the robot with different drawing tools and canvases
 
 **Takeaways:**
-- The weight of the manipulator arm itself can affect the accuracy and movement of the joints within the arm.
-- Line segmentation parameters may need to be tuned depedning on the complexity of the image being analyzed.
-- Lag on the *intro-robo* network can greatly influence not just the speed of the robot but the accuracy of its movements.
-
-
-## Running:
-- Make sure you're running `roscore`
-- Launch the robot's manipulation stuff
-  - `roslaunch turtlebot3_manipulation_bringup turtlebot3_manipulation_bringup.launch`
-- Launch the controller for the arm
-  - `roslaunch turtlebot3_manipulation_moveit_config move_group.launch`
+- The weight of the OpenMANIPULATOR arm itself, as well as any objects it is holding in the gripper, can affect the accuracy and movement of the joints within the arm. In general, the arm performs quite differently from in simulation, and there is no substitute for repeated tests on a physical robot. Also, just because the arm can reach a point in 3D space based on the ranges of its joints, these joints may, for example, require the arm to hit the physical Turtlebot, and thus movement to the position might not be possible in the realworld.
+- Parameters in computer vision, such as in line segment detection, generally need to be tuned depending on the complexity of the image being analyzed. This tuning can take a significant amount of time, so it is prudent to stick to a similar class of simple images (e.g. shapes on a solid background) when testing.
+- Lag on the network (such as on *intro-robo*) can greatly influence not just the speed of the robot but the accuracy of its movements, and this lag often depends on network load. For example, in our project, lag in the LiDAR data could cause the robot to overshoot its alignment with the wall (which can be mitigated to some extent by lowering the proportional control factor), and lag in sending joint positions can cause the robot to miss a point in a drawing.
